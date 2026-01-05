@@ -1,0 +1,32 @@
+# Build outputs
+dist
+build
+*.tsbuildinfo
+
+# Demo files
+demo
+
+# Development files
+.vscode
+.idea
+*.log
+.DS_Store
+
+# Dependencies
+node_modules
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/__tests__
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Misc
+.env
+.env.local
+coverage
+.nyc_output
