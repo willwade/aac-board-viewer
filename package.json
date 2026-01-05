@@ -41,7 +41,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsup",
-    "build:demo": "vite build",
+    "build:demo": "npm --prefix demo run build",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx",
     "type-check": "tsc --noEmit"

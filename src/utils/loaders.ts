@@ -284,7 +284,7 @@ export async function calculateMetrics(
     id: string;
     label: string;
     effort: number;
-    count: number;
+    count?: number;
     level?: number;
     semantic_id?: string;
     clone_id?: string;
@@ -294,7 +294,7 @@ export async function calculateMetrics(
     id: btn.id,
     label: btn.label,
     effort: btn.effort,
-    count: btn.count,
+    count: btn.count ?? 0,
     is_word: true,
     level: btn.level,
     semantic_id: btn.semantic_id,

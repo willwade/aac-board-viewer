@@ -43,9 +43,11 @@ export interface BoardViewerProps {
   /** Show the message bar at the top (default: true) */
   showMessageBar?: boolean;
   /** Show effort badges on buttons (default: true if metrics provided) */
-  showEffortBadges?: boolean;
+ showEffortBadges?: boolean;
   /** Show indicators for buttons that link to other pages (default: true) */
   showLinkIndicators?: boolean;
+  /** Start the viewer on this page id (overrides tree.rootId) */
+  initialPageId?: string;
   /** Callback when a button is clicked */
   onButtonClick?: (button: import('@willwade/aac-processors').AACButton) => void;
   /** Callback when page changes */

@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
+import type { AACTree } from 'aac-board-viewer';
 import { BoardViewer } from 'aac-board-viewer';
 import 'aac-board-viewer/styles';
 import { FileUploader } from './FileUploader';
 import './App.css';
 
 function App() {
-  const [tree, setTree] = useState<any>(null);
+  const [tree, setTree] = useState<AACTree | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [format, setFormat] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<Record<string, any> | null>(null);
+  const [metadata, setMetadata] = useState<Record<string, unknown> | null>(null);
+  const [homePageId, setHomePageId] = useState<string | null>(null);
 
   const handleFileLoad = async (file: File) => {
     setLoading(true);
@@ -19,6 +21,7 @@ function App() {
     setTree(null);
     setFormat(null);
     setMetadata(null);
+    setHomePageId(null);
 
     try {
       const response = await fetch('/api/load', {
@@ -41,9 +44,15 @@ function App() {
       }
 
       const result = await response.json();
-      setTree(result.tree);
+      setTree(result.tree as AACTree);
       setFormat(result.format || null);
-      setMetadata(result.metadata || null);
+      setMetadata((result.metadata as Record<string, unknown>) || null);
+      if (result.tree?.rootId) {
+        setHomePageId(result.tree.rootId);
+      } else {
+        const firstPage = Object.keys(result.tree?.pages || {})[0];
+        setHomePageId(firstPage || null);
+      }
     } catch (err) {
       setError(
         `Error loading file: ${err instanceof Error ? err.message : 'Unknown error'}\n\n` +
@@ -65,6 +74,8 @@ function App() {
     { name: 'Excel', extensions: ['.xlsx', '.xls'] },
     { name: 'DOT', extensions: ['.dot'] },
   ];
+
+  const pageOptions = tree ? Object.values(tree.pages) : [];
 
   return (
     <div className="app">
@@ -109,14 +120,49 @@ function App() {
                   <strong>Detected format:</strong> {format}
                 </div>
               )}
-              {metadata?.name && (
+              {metadata && typeof (metadata as Record<string, unknown>).name === 'string' && (
                 <div>
-                  <strong>Board name:</strong> {metadata.name}
+                  <strong>Board name:</strong>{' '}
+                  {(metadata as Record<string, unknown>).name as string}
+                </div>
+              )}
+              {metadata && (
+                <div>
+                  <strong>Metadata keys:</strong>{' '}
+                  {Object.keys(metadata as Record<string, unknown>).join(', ')}
+                </div>
+              )}
+            </div>
+
+            <div className="board-meta" style={{ gap: '0.5rem 1rem' }}>
+              <div>
+                <label style={{ fontWeight: 600, marginRight: '0.5rem' }}>Home page</label>
+                <select
+                  value={homePageId ?? ''}
+                  onChange={(e) => setHomePageId(e.target.value || null)}
+                  style={{ padding: '0.4rem 0.6rem', borderRadius: '0.35rem' }}
+                >
+                  <option value="">(auto)</option>
+                  {pageOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || p.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {metadata && (
+                <div style={{ fontSize: '0.9rem', color: '#4b5563' }}>
+                  <strong>Metadata:</strong>{' '}
+                  <span>
+                    {(Object.entries(metadata) as Array<[string, unknown]>)
+                      .map(([k, v]) => `${k}: ${String(v)}`)
+                      .join(' • ')}
+                  </span>
                 </div>
               )}
             </div>
             <div className="board-container">
-              <BoardViewer tree={tree} />
+              <BoardViewer tree={tree} initialPageId={homePageId || undefined} />
             </div>
           </>
         )}

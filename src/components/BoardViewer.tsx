@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import type {
   AACPage,
   AACButton,
@@ -19,12 +19,16 @@ export function BoardViewer({
   showMessageBar = true,
   showEffortBadges = true,
   showLinkIndicators = true,
+  initialPageId,
   onButtonClick,
   onPageChange,
   className = '',
 }: BoardViewerProps) {
-  // Determine which page to show
-  const [currentPageId, setCurrentPageId] = useState<string | null>(() => {
+  const resolveInitialPageId = useCallback(() => {
+    // Explicit override
+    if (initialPageId && tree.pages[initialPageId]) {
+      return initialPageId;
+    }
     // If toolbar exists and rootId is different, use rootId
     if (tree.toolbarId && tree.rootId && tree.rootId !== tree.toolbarId) {
       return tree.rootId;
@@ -49,7 +53,10 @@ export function BoardViewer({
     // Last resort: first page
     const pageIds = Object.keys(tree.pages);
     return pageIds.length > 0 ? pageIds[0] : null;
-  });
+  }, [initialPageId, tree]);
+
+  // Determine which page to show
+  const [currentPageId, setCurrentPageId] = useState<string | null>(() => resolveInitialPageId());
 
   const [pageHistory, setPageHistory] = useState<AACPage[]>([]);
   const [message, setMessage] = useState('');
@@ -67,6 +74,12 @@ export function BoardViewer({
   }, [buttonMetrics]);
 
   const currentPage = currentPageId ? tree.pages[currentPageId] : null;
+
+  // Sync when tree or initialPageId changes
+  React.useEffect(() => {
+    setCurrentPageId(resolveInitialPageId());
+    setPageHistory([]);
+  }, [resolveInitialPageId]);
 
   // Calculate total stats for current word
   const updateStats = (word: string, effort: number) => {
