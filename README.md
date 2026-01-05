@@ -21,11 +21,12 @@ Universal AAC (Augmentative and Alternative Communication) board viewer componen
 - 🎨 **Preserves Styling** - Maintains original colors, fonts, and layouts
 - 🔗 **Interactive Navigation** - Click buttons to navigate between pages
 - 🗣️ **Sentence Building** - Tap buttons to build sentences
-- 📊 **Effort Metrics** - Display cognitive effort scores per button
-- 🎛️ **Toolbar Support** - Side-by-side toolbar and content display
-- 🔧 **Customizable** - Flexible styling and behavior options
+- 🔧 **Customizable** - Flexible styling and behavior options (toggle message bar, link indicators, effort badges)
+- 🌙 **Dark-mode Friendly** - Inherits host app theme when a parent adds the `dark` class
 
 ## Installation
+
+Requires Node 20+.
 
 ```bash
 npm install aac-board-viewer

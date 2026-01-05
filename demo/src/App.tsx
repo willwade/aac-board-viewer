@@ -188,9 +188,7 @@ function App() {
                   <li>🎨 Preserves original styling</li>
                   <li>🔗 Interactive navigation</li>
                   <li>🗣️ Sentence building</li>
-                  <li>📊 Effort metrics display</li>
-                  <li>🎛️ Toolbar support</li>
-                  <li>🌙 Dark mode ready</li>
+                  <li>🌙 Dark-mode friendly (add a parent <code>dark</code> class)</li>
                 </ul>
               </div>
               <div className="info-card">
