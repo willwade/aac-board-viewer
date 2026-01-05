@@ -5,7 +5,7 @@
  * and adds viewer-specific types
  */
 
-export type {
+import type {
   AACTree,
   AACPage,
   AACButton,
@@ -37,7 +37,7 @@ export interface ButtonMetric {
  */
 export interface BoardViewerProps {
   /** The AAC tree containing pages and navigation structure */
-  tree: AACTree;
+  tree: import('@willwade/aac-processors').AACTree;
   /** Optional button metrics to display effort scores */
   buttonMetrics?: ButtonMetric[] | null;
   /** Show the message bar at the top (default: true) */
@@ -58,7 +58,7 @@ export interface BoardViewerProps {
  * Result from loading an AAC file
  */
 export interface LoadAACFileResult {
-  tree: AACTree;
+  tree: import('@willwade/aac-processors').AACTree;
   format: string;
   metadata?: {
     [key: string]: any;
@@ -68,6 +68,9 @@ export interface LoadAACFileResult {
 /**
  * Metrics calculation options
  */
+// Re-export processor types
+export type { AACTree, AACPage, AACButton, AACSemanticAction, AACSemanticCategory, AACSemanticIntent };
+
 export interface MetricsOptions {
   /** Access method: 'direct' or 'scanning' */
   accessMethod?: 'direct' | 'scanning';
