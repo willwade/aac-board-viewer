@@ -8,7 +8,7 @@ Universal AAC (Augmentative and Alternative Communication) board viewer componen
 - **TouchChat** (`.ce` files)
 - **TD Snap** (`.sps`, `.spb` files)
 - **OpenBoard** (`.obf`, `.obz` files)
-- **Asterics Grid** (`.obz` with Asterics format)
+- **Asterics Grid** (`.grd` files)
 - **Apple Panels** (`.plist` files)
 - **OPML** (`.opml` files)
 - **Excel** (`.xlsx` boards)
@@ -245,7 +245,7 @@ Apple Panels use free-form positioning. The viewer automatically:
 
 ### Asterics Grid
 
-Asterics files (`.obz`) are automatically detected and processed using the Asterics Grid processor.
+Asterics files (`.grd`) are automatically detected and processed using the Asterics Grid processor.
 
 ### GridSet / SNAP / TouchChat
 

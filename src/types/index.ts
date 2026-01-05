@@ -61,7 +61,7 @@ export interface LoadAACFileResult {
   tree: import('@willwade/aac-processors').AACTree;
   format: string;
   metadata?: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

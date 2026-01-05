@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { loadAACFile, loadAACFileFromURL, calculateMetrics } from '../utils/loaders';
+import { loadAACFileFromURL, calculateMetrics } from '../utils/loaders';
 import type { AACTree } from '@willwade/aac-processors';
 import type { ButtonMetric, MetricsOptions } from '../types';
 
@@ -29,7 +29,7 @@ import type { ButtonMetric, MetricsOptions } from '../types';
 export function useAACFile(
   url: string,
   options?: {
-    processorOptions?: any;
+    processorOptions?: Record<string, unknown>;
     enabled?: boolean;
   }
 ) {
@@ -93,7 +93,7 @@ export function useAACFileWithMetrics(
   url: string,
   metricsOptions?: MetricsOptions,
   fileOptions?: {
-    processorOptions?: any;
+    processorOptions?: Record<string, unknown>;
     enabled?: boolean;
   }
 ) {

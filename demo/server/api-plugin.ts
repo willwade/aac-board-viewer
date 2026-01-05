@@ -14,6 +14,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Allow', 'POST');
+    res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ message: 'Method not allowed' }));
     return;
   }
@@ -34,6 +35,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     res.end(JSON.stringify(result));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    // Log for debugging during dev
+    console.error('AAC load error:', message);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ message }));

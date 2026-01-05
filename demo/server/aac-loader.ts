@@ -4,13 +4,17 @@ import {
   SnapProcessor,
   TouchChatProcessor,
   ObfProcessor,
-  ObfsetProcessor,
+  AstericsGridProcessor,
   ApplePanelsProcessor,
   OpmlProcessor,
   ExcelProcessor,
   DotProcessor,
   type AACTree,
 } from '@willwade/aac-processors';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 type ProcessorOptions = any;
 
@@ -21,7 +25,8 @@ function detectFormat(filename: string): string {
   if (ext.endsWith('.sps') || ext.endsWith('.spb')) return 'snap';
   if (ext.endsWith('.ce')) return 'touchchat';
   if (ext.endsWith('.obf')) return 'openboard';
-  if (ext.endsWith('.obz')) return 'obfset';
+  if (ext.endsWith('.obz')) return 'openboard';
+  if (ext.endsWith('.grd')) return 'asterics-grid';
   if (ext.endsWith('.plist')) return 'apple-panels';
   if (ext.endsWith('.opml')) return 'opml';
   if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) return 'excel';
@@ -39,7 +44,8 @@ function getProcessorForFile(filename: string, options?: ProcessorOptions) {
   }
   if (ext.endsWith('.ce')) return new TouchChatProcessor();
   if (ext.endsWith('.obf')) return new ObfProcessor();
-  if (ext.endsWith('.obz')) return new ObfsetProcessor();
+  if (ext.endsWith('.obz')) return new ObfProcessor();
+  if (ext.endsWith('.grd')) return new AstericsGridProcessor();
   if (ext.endsWith('.plist')) return new ApplePanelsProcessor();
   if (ext.endsWith('.opml')) return new OpmlProcessor();
   if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) return new ExcelProcessor();
@@ -59,8 +65,19 @@ export async function loadAACFromBuffer(
 
   const processor = getProcessorForFile(filename, options);
 
-  // loadIntoTree accepts Buffer directly; wrap in Promise in case it is sync
-  const tree = (await Promise.resolve(processor.loadIntoTree(buffer))) as AACTree;
+  // Some processors expect a real file path (ZIP-backed formats especially),
+  // so write to a temp file for reliability.
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aac-board-'));
+  const tmpPath = path.join(tmpDir, `${randomUUID()}-${path.basename(filename)}`);
+  await fs.writeFile(tmpPath, buffer);
+
+  let tree: AACTree;
+  try {
+    tree = (await Promise.resolve(processor.loadIntoTree(tmpPath))) as AACTree;
+  } finally {
+    // Best-effort cleanup; ignore errors
+    fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+  }
 
   return {
     tree,

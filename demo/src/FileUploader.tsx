@@ -47,7 +47,7 @@ export function FileUploader({ onFileLoaded, loading }: FileUploaderProps) {
         <input
           type="file"
           id="file-upload"
-          accept=".gridset,.sps,.spb,.ce,.obf,.obz,.plist,.opml,.xlsx,.xls,.dot"
+          accept=".gridset,.sps,.spb,.ce,.obf,.obz,.grd,.plist,.opml,.xlsx,.xls,.dot"
           onChange={handleChange}
           disabled={loading}
           style={{ display: 'none' }}

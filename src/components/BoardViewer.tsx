@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import type {
-  AACTree,
   AACPage,
   AACButton,
 } from '@willwade/aac-processors';
@@ -85,7 +84,6 @@ export function BoardViewer({
     const targetPageId = button.targetPageId || button.semanticAction?.targetId;
 
     if (targetPageId && tree.pages[targetPageId]) {
-      const targetPage = tree.pages[targetPageId];
       if (currentPage) {
         setPageHistory((prev) => [...prev, currentPage]);
       }
@@ -229,8 +227,8 @@ export function BoardViewer({
                 TOOLBAR
               </p>
               <div className="grid gap-1">
-                {toolbarPage.grid.map((row, rowIndex) =>
-                  row.map((button, colIndex) => {
+                {toolbarPage.grid.map((row, _rowIndex) =>
+                  row.map((button, _colIndex) => {
                     if (!button) return null;
 
                     const buttonMetric = buttonMetricsLookup[button.id];

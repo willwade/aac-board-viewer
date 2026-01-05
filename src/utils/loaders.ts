@@ -8,6 +8,8 @@
 import type { AACTree } from '@willwade/aac-processors';
 import type { LoadAACFileResult } from '../types';
 
+type ProcessorOptions = Record<string, unknown> | undefined;
+
 type ProcessorModule = typeof import('@willwade/aac-processors');
 
 // Lazily load processors so browser bundles avoid pulling in Node APIs
@@ -18,15 +20,15 @@ async function importProcessors(): Promise<ProcessorModule> {
 /**
  * Get the appropriate processor for a file based on its extension
  */
-async function getProcessorForFile(filepath: string, options?: any) {
+async function getProcessorForFile(filepath: string, options?: ProcessorOptions) {
   const {
     getProcessor,
     GridsetProcessor,
     SnapProcessor,
     TouchChatProcessor,
     ObfProcessor,
-    ObfsetProcessor,
     ApplePanelsProcessor,
+    AstericsGridProcessor,
     OpmlProcessor,
     ExcelProcessor,
     DotProcessor,
@@ -54,11 +56,13 @@ async function getProcessorForFile(filepath: string, options?: any) {
     return new ObfProcessor();
   }
   if (ext.endsWith('.obz')) {
-    return new ObfsetProcessor();
+    return new ObfProcessor();
   }
 
-  // Asterics Grid files (also .obz but different format)
-  // This is handled by checking the content in ObfsetProcessor
+  // Asterics Grid files (.grd)
+  if (ext.endsWith('.grd')) {
+    return new AstericsGridProcessor();
+  }
 
   // Apple Panels files
   if (ext.endsWith('.plist')) {
@@ -98,7 +102,7 @@ async function getProcessorForFile(filepath: string, options?: any) {
  */
 export async function loadAACFile(
   filepath: string,
-  options?: any
+  options?: ProcessorOptions
 ): Promise<AACTree> {
   const processor = await getProcessorForFile(filepath, options);
   return processor.loadIntoTree(filepath);
@@ -113,7 +117,7 @@ export async function loadAACFile(
  */
 export async function loadAACFileWithMetadata(
   filepath: string,
-  options?: any
+  options?: ProcessorOptions
 ): Promise<LoadAACFileResult> {
   const tree = await loadAACFile(filepath, options);
 
@@ -125,7 +129,8 @@ export async function loadAACFileWithMetadata(
   else if (ext.endsWith('.sps') || ext.endsWith('.spb')) format = 'snap';
   else if (ext.endsWith('.ce')) format = 'touchchat';
   else if (ext.endsWith('.obf')) format = 'openboard';
-  else if (ext.endsWith('.obz')) format = 'obfset';
+  else if (ext.endsWith('.obz')) format = 'openboard';
+  else if (ext.endsWith('.grd')) format = 'asterics-grid';
   else if (ext.endsWith('.plist')) format = 'apple-panels';
   else if (ext.endsWith('.opml')) format = 'opml';
   else if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) format = 'excel';
@@ -155,7 +160,7 @@ export async function loadAACFileWithMetadata(
  */
 export async function loadAACFileFromURL(
   url: string,
-  options?: any
+  options?: ProcessorOptions
 ): Promise<AACTree> {
   const response = await fetch(url);
   if (!response.ok) {
@@ -186,28 +191,10 @@ export async function loadAACFileFromURL(
  * ```
  */
 export async function loadAACFileFromFile(
-  file: File | Blob,
-  filename?: string,
-  options?: any
+  _file: File | Blob,
+  _filename?: string,
+  _options?: unknown
 ): Promise<AACTree> {
-  // For client-side file loading, we need to:
-  // 1. Read the file as ArrayBuffer
-  // 2. For text-based formats, convert to string and parse
-  // 3. For binary formats (like .ce SQLite), we'd need a different approach
-
-  const arrayBuffer = await file.arrayBuffer();
-  const uint8Array = new Uint8Array(arrayBuffer);
-
-  // Detect file type from extension or content
-  const name = filename || (file instanceof File ? file.name : 'unknown');
-  const ext = name.toLowerCase();
-
-  // For now, this is a simplified implementation
-  // Full implementation would need to handle:
-  // - Text-based files: decode and parse
-  // - Binary files: use appropriate parsers
-  // - ZIP files (.obz, .gridset): extract and process
-
   throw new Error('Client-side file loading not yet fully implemented. Please use server-side loading or loadAACFileFromURL with proper CORS headers.');
 }
 
@@ -257,7 +244,7 @@ export async function calculateMetrics(
 
   const calculator = new MetricsCalculator();
 
-  let metricsOptions: any = {};
+  let metricsOptions: Record<string, unknown> = {};
 
   if (options.accessMethod === 'scanning' && options.scanningConfig) {
     // Import scanning enums
@@ -293,7 +280,17 @@ export async function calculateMetrics(
   const metricsResult = calculator.analyze(tree, metricsOptions);
 
   // Convert to the format expected by BoardViewer
-  return metricsResult.buttons.map((btn: any) => ({
+  type MetricsButton = {
+    id: string;
+    label: string;
+    effort: number;
+    count: number;
+    level?: number;
+    semantic_id?: string;
+    clone_id?: string;
+  };
+
+  return metricsResult.buttons.map((btn: MetricsButton) => ({
     id: btn.id,
     label: btn.label,
     effort: btn.effort,
@@ -338,8 +335,8 @@ export function getSupportedFormats(): Array<{
     },
     {
       name: 'Asterics Grid',
-      extensions: ['.obz'],
-      description: 'Asterics Grid files (OBZ format)',
+      extensions: ['.grd'],
+      description: 'Asterics Grid files (.grd)',
     },
     {
       name: 'Apple Panels',

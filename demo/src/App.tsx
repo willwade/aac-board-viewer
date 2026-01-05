@@ -59,7 +59,7 @@ function App() {
     { name: 'TD Snap', extensions: ['.sps', '.spb'] },
     { name: 'TouchChat', extensions: ['.ce'] },
     { name: 'OpenBoard', extensions: ['.obf', '.obz'] },
-    { name: 'Asterics', extensions: ['.obz'] },
+    { name: 'Asterics', extensions: ['.grd'] },
     { name: 'Apple Panels', extensions: ['.plist'] },
     { name: 'OPML', extensions: ['.opml'] },
     { name: 'Excel', extensions: ['.xlsx', '.xls'] },
