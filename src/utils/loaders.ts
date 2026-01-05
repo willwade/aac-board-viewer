@@ -5,26 +5,33 @@
  * (URLs, File objects, file paths) in both client and server contexts.
  */
 
-import {
-  getProcessor,
-  GridsetProcessor,
-  SnapProcessor,
-  TouchChatProcessor,
-  ObfProcessor,
-  ObfsetProcessor,
-  AstericsGridProcessor,
-  ApplePanelsProcessor,
-  OpmlProcessor,
-  ExcelProcessor,
-  DotProcessor,
-  type AACTree,
-} from '@willwade/aac-processors';
+import type { AACTree } from '@willwade/aac-processors';
 import type { LoadAACFileResult } from '../types';
+
+type ProcessorModule = typeof import('@willwade/aac-processors');
+
+// Lazily load processors so browser bundles avoid pulling in Node APIs
+async function importProcessors(): Promise<ProcessorModule> {
+  return import('@willwade/aac-processors');
+}
 
 /**
  * Get the appropriate processor for a file based on its extension
  */
-function getProcessorForFile(filepath: string, options?: any) {
+async function getProcessorForFile(filepath: string, options?: any) {
+  const {
+    getProcessor,
+    GridsetProcessor,
+    SnapProcessor,
+    TouchChatProcessor,
+    ObfProcessor,
+    ObfsetProcessor,
+    ApplePanelsProcessor,
+    OpmlProcessor,
+    ExcelProcessor,
+    DotProcessor,
+  } = await importProcessors();
+
   const ext = filepath.toLowerCase();
 
   // GridSet files (.gridset)
@@ -93,7 +100,7 @@ export async function loadAACFile(
   filepath: string,
   options?: any
 ): Promise<AACTree> {
-  const processor = getProcessorForFile(filepath, options);
+  const processor = await getProcessorForFile(filepath, options);
   return processor.loadIntoTree(filepath);
 }
 

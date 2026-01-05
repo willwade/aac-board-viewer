@@ -9,39 +9,45 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
+  const [format, setFormat] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<Record<string, any> | null>(null);
 
   const handleFileLoad = async (file: File) => {
     setLoading(true);
     setError(null);
     setFileName(file.name);
+    setTree(null);
+    setFormat(null);
+    setMetadata(null);
 
     try {
-      // Read file as ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      const response = await fetch('/api/load', {
+        method: 'POST',
+        headers: {
+          'x-filename': encodeURIComponent(file.name),
+        },
+        body: file,
+      });
 
-      // For now, we need to use the processors
-      // Since we're client-side, we'll need to handle this differently
-      // For demo purposes, let's try to read text files
-      const text = new TextDecoder().decode(uint8Array);
+      if (!response.ok) {
+        let errText = await response.text();
+        try {
+          const parsed = JSON.parse(errText);
+          errText = parsed.message || errText;
+        } catch {
+          // Not JSON
+        }
+        throw new Error(errText || 'Failed to process file on server');
+      }
 
-      // Show what we got
-      console.log('File loaded:', file.name, file.size, 'bytes');
-      console.log('First 500 chars:', text.substring(0, 500));
-
-      setError(
-        `File "${file.name}" loaded (${(file.size / 1024).toFixed(2)} KB).\n\n` +
-        'Client-side file processing is coming soon! For now, this demo shows the UI.\n\n' +
-        'To test with real files, you can:\n' +
-        '1. Use the library in your backend application\n' +
-        '2. Serve files via an API endpoint\n' +
-        '3. Check the EXAMPLES.md for integration examples'
-      );
+      const result = await response.json();
+      setTree(result.tree);
+      setFormat(result.format || null);
+      setMetadata(result.metadata || null);
     } catch (err) {
       setError(
         `Error loading file: ${err instanceof Error ? err.message : 'Unknown error'}\n\n` +
-        'Note: Full client-side file processing requires additional setup.\n' +
-        'See SETUP.md for server-side integration examples.'
+        'The server-side processor could not load this file. Please check the format and try again.'
       );
     } finally {
       setLoading(false);
@@ -93,15 +99,32 @@ function App() {
         )}
 
         {!loading && !error && tree && (
-          <div className="board-container">
-            <BoardViewer tree={tree} />
-          </div>
+          <>
+            <div className="board-meta">
+              <div>
+                <strong>File:</strong> {fileName}
+              </div>
+              {format && (
+                <div>
+                  <strong>Detected format:</strong> {format}
+                </div>
+              )}
+              {metadata?.name && (
+                <div>
+                  <strong>Board name:</strong> {metadata.name}
+                </div>
+              )}
+            </div>
+            <div className="board-container">
+              <BoardViewer tree={tree} />
+            </div>
+          </>
         )}
 
         {!loading && !error && !tree && (
           <div className="info">
             <h2>Welcome to AAC Board Viewer! 🎉</h2>
-            <p>Upload any AAC file above to see the viewer in action.</p>
+            <p>Upload any AAC file above to see the viewer in action. Files are parsed on the local server using @willwade/aac-processors.</p>
             <div className="info-sections">
               <div className="info-card">
                 <h3>📁 Supported Formats</h3>

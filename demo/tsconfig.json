@@ -12,6 +12,5 @@
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src"],
-  "references": [{ "path": ".." }]
+  "include": ["src"]
 }
