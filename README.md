@@ -40,23 +40,9 @@ yarn add aac-board-viewer
 
 ## Quick Start
 
-### Client-Side Usage
-
-```tsx
-import { BoardViewer, useAACFile } from 'aac-board-viewer';
-import 'aac-board-viewer/styles';
-
-function MyViewer() {
-  const { tree, loading, error } = useAACFile('/path/to/file.sps');
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  return <BoardViewer tree={tree} />;
-}
-```
-
 ### Server-Side / API Usage
+
+> Important: `@willwade/aac-processors` is a Node-only dependency (uses native modules like `better-sqlite3`). File parsing must happen server-side. For client apps, call an API that returns the parsed tree and pass that to `BoardViewer`.
 
 ```tsx
 import { BoardViewer } from 'aac-board-viewer';
@@ -178,18 +164,6 @@ interface AACTree {
 ## File Loading
 
 The library provides utilities for loading AAC files:
-
-### Client-Side Loading
-
-```tsx
-import { useAACFile } from 'aac-board-viewer';
-
-function Viewer({ fileUrl }) {
-  const { tree, loading, error } = useAACFile(fileUrl);
-
-  // ...
-}
-```
 
 ### Programmatic Loading
 
