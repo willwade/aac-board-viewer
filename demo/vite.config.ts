@@ -6,5 +6,12 @@ export default defineConfig({
   plugins: [react(), aacApiPlugin()],
   server: {
     port: 3001,
+    host: true,
+  },
+  preview: {
+    host: true,
+    port: parseInt(process.env.PORT || '4173', 10),
+    // Allow running behind App Platform/other hosts without hard-coding the domain
+    allowedHosts: ['*'],
   },
 });
