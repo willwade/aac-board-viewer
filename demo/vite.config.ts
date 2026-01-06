@@ -7,11 +7,12 @@ export default defineConfig({
   server: {
     port: 3001,
     host: true,
+    allowedHosts: true,
   },
   preview: {
     host: true,
     port: parseInt(process.env.PORT || '4173', 10),
     // Allow running behind App Platform/other hosts without hard-coding the domain
-    allowedHosts: ['*'],
+    allowedHosts: true,
   },
 });
