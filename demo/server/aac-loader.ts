@@ -79,8 +79,20 @@ export async function loadAACFromBuffer(
     fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
 
+  // The processor attaches rootId/toolbarId as non-enumerable properties,
+  // so JSON.stringify would drop them. Build a plain object so the client
+  // receives the correct home page information.
+  const serializableTree: AACTree = {
+    pages: tree.pages,
+    metadata: tree.metadata,
+    rootId: tree.rootId,
+    toolbarId: tree.toolbarId,
+    addPage: tree.addPage.bind(tree),
+    getPage: tree.getPage.bind(tree),
+  };
+
   return {
-    tree,
+    tree: serializableTree,
     format: detectFormat(filename),
     metadata: tree.metadata,
   };
