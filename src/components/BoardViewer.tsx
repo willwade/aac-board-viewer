@@ -43,6 +43,13 @@ export function BoardViewer({
         return tree.rootId;
       }
     }
+    // Explicit Start page fallback if present
+    const startPage = Object.values(tree.pages).find(
+      (p) => p.name.toLowerCase() === 'start'
+    );
+    if (startPage) {
+      return startPage.id;
+    }
     // Fall back to first page that's not a toolbar
     const nonToolbarPage = Object.values(tree.pages).find(
       (p) => !p.name.toLowerCase().includes('toolbar') && !p.name.toLowerCase().includes('tool bar')
@@ -405,12 +412,32 @@ export function BoardViewer({
                   const isPredictionCell =
                     button.contentType === 'AutoContent' &&
                     (button.contentSubType || '').toLowerCase() === 'prediction';
+                  const isWorkspace = button.contentType === 'Workspace';
 
                   const imageSrc =
                     (button.resolvedImageEntry && !String(button.resolvedImageEntry).startsWith('[')
                       ? button.resolvedImageEntry
                       : null) ||
                     (button.image && !String(button.image).startsWith('[') ? button.image : null);
+
+                  if (isWorkspace) {
+                    return (
+                      <div
+                        key={button.id}
+                        className="relative p-3 rounded-lg border-2 bg-gray-50 text-gray-800 flex items-center gap-2"
+                        style={{
+                          borderColor: button.style?.borderColor || '#e5e7eb',
+                          gridColumn: `${colIndex + 1} / span ${colSpan}`,
+                          gridRow: `${rowIndex + 1} / span ${rowSpan}`,
+                        }}
+                      >
+                        <div className="font-semibold text-sm">{button.label || 'Workspace'}</div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {message || 'Chat writing area'}
+                        </div>
+                      </div>
+                    );
+                  }
 
                   return (
                     <button
