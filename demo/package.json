@@ -11,7 +11,7 @@
   "dependencies": {
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "aac-board-viewer": "^0.1.2",
+    "aac-board-viewer": "npm:aac-board-viewer@0.1.2",
     "@willwade/aac-processors": "^0.0.25"
   },
   "devDependencies": {
@@ -20,5 +20,10 @@
     "@vitejs/plugin-react": "^4.2.0",
     "typescript": "^5.3.0",
     "vite": "^5.0.0"
+  },
+  "overrides": {
+    "aac-board-viewer": {
+      "@willwade/aac-processors": "0.0.25"
+    }
   }
 }
