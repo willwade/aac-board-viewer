@@ -45,7 +45,13 @@ jobs:
 
       - name: Sync package metadata
         run: |
-          npm version "${{ steps.release_version.outputs.version }}" --no-git-tag-version
+          CURRENT=$(node -p "require('./package.json').version")
+          NEW="${{ steps.release_version.outputs.version }}"
+          if [ "$CURRENT" = "$NEW" ]; then
+            echo "package.json already at $CURRENT; skipping npm version bump"
+          else
+            npm version "$NEW" --no-git-tag-version
+          fi
 
       - name: Build library
         run: npm run build
