@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { PluginOption, ViteDevServer, PreviewServer } from 'vite';
 import { loadAACFromBuffer } from './aac-loader';
+import { getValidatorForFile } from '@willwade/aac-processors/validation';
 
 async function readRequestBody(req: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
@@ -26,13 +27,24 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       : Array.isArray(filenameHeader)
         ? decodeURIComponent(filenameHeader[0])
         : 'uploaded-file';
+    const shouldValidate = req.headers['x-validate'] === 'true';
 
     const body = await readRequestBody(req);
+
+    // Optional validation pass
+    let validationResult: any = null;
+    if (shouldValidate) {
+      const validator = getValidatorForFile(filename);
+      if (validator) {
+        validationResult = await validator.validate(body, filename, body.length);
+      }
+    }
+
     const result = await loadAACFromBuffer(filename, body);
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(result));
+    res.end(JSON.stringify({ ...result, validation: validationResult }));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     // Log for debugging during dev

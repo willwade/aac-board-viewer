@@ -4,6 +4,7 @@ import { BoardViewer } from 'aac-board-viewer';
 import 'aac-board-viewer/styles';
 import { FileUploader } from './FileUploader';
 import './App.css';
+import type { ValidationResult, ValidationCheck } from '@willwade/aac-processors/validation';
 
 function App() {
   const [tree, setTree] = useState<AACTree | null>(null);
@@ -13,6 +14,11 @@ function App() {
   const [format, setFormat] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<Record<string, unknown> | null>(null);
   const [homePageId, setHomePageId] = useState<string | null>(null);
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [shouldValidate, setShouldValidate] = useState(false);
+
+  const formatValidationSummary = (result: ValidationResult) =>
+    `${result.valid ? 'Valid' : 'Invalid'} · ${result.errors} errors · ${result.warnings} warnings`;
 
   const handleFileLoad = async (file: File) => {
     setLoading(true);
@@ -22,28 +28,38 @@ function App() {
     setFormat(null);
     setMetadata(null);
     setHomePageId(null);
+    setValidation(null);
 
     try {
       const response = await fetch('/api/load', {
         method: 'POST',
         headers: {
           'x-filename': encodeURIComponent(file.name),
+          'x-validate': shouldValidate ? 'true' : 'false',
         },
         body: file,
       });
 
+      // Try to parse JSON either way so we can surface validation details
+      const parsed = await response.json().catch(() => null);
       if (!response.ok) {
-        let errText = await response.text();
-        try {
-          const parsed = JSON.parse(errText);
-          errText = parsed.message || errText;
-        } catch {
-          // Not JSON
+        const validationResult = parsed?.validation as ValidationResult | undefined;
+        if (validationResult) {
+          setValidation(validationResult);
         }
-        throw new Error(errText || 'Failed to process file on server');
+        const message =
+          parsed?.message ||
+          (validationResult ? `Validation failed: ${formatValidationSummary(validationResult)}` : null) ||
+          'Failed to process file on server';
+        throw new Error(message);
       }
 
-      const result = await response.json();
+      const result = parsed as {
+        tree: AACTree;
+        format?: string;
+        metadata?: Record<string, unknown>;
+        validation?: ValidationResult;
+      };
       setTree(result.tree as AACTree);
       setFormat(result.format || null);
       setMetadata((result.metadata as Record<string, unknown>) || null);
@@ -53,6 +69,7 @@ function App() {
         const firstPage = Object.keys(result.tree?.pages || {})[0];
         setHomePageId(firstPage || null);
       }
+      setValidation((result.validation as ValidationResult) || null);
     } catch (err) {
       setError(
         `Error loading file: ${err instanceof Error ? err.message : 'Unknown error'}\n\n` +
@@ -88,6 +105,14 @@ function App() {
             Supports:{' '}
             {formats.map((f) => f.name).join(', ')}
           </span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <input
+              type="checkbox"
+              checked={shouldValidate}
+              onChange={(e) => setShouldValidate(e.target.checked)}
+            />
+            Validate file before loading
+          </label>
         </div>
       </header>
 
@@ -164,6 +189,25 @@ function App() {
             <div className="board-container">
               <BoardViewer tree={tree} initialPageId={homePageId || undefined} />
             </div>
+            {validation && (
+              <div className="board-meta" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                <strong>Validation</strong>
+                <div style={{ fontSize: '0.9rem', color: validation.valid ? '#15803d' : '#b91c1c' }}>
+                  {validation.valid ? 'Valid file' : 'Validation failed'} · {validation.errors} errors ·{' '}
+                  {validation.warnings} warnings
+                </div>
+                <ul style={{ marginLeft: '1rem', marginTop: '0.5rem', color: '#374151' }}>
+                  {validation.results.map((r: ValidationCheck, idx: number) => (
+                    <li key={`${r.type}-${idx}`}>
+                      <strong>{r.description}:</strong> {r.valid ? 'ok' : r.error || 'failed'}
+                      {r.warnings && r.warnings.length > 0 && (
+                        <span> · warnings: {r.warnings.join('; ')}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </>
         )}
 
