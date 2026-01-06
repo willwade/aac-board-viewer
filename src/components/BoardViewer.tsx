@@ -74,6 +74,17 @@ export function BoardViewer({
   }, [buttonMetrics]);
 
   const currentPage = currentPageId ? tree.pages[currentPageId] : null;
+  const goToPage = (targetPageId: string | undefined | null) => {
+    if (!targetPageId || !tree.pages[targetPageId]) return false;
+    if (currentPage) {
+      setPageHistory((prev) => [...prev, currentPage]);
+    }
+    setCurrentPageId(targetPageId);
+    if (onPageChange) {
+      onPageChange(targetPageId);
+    }
+    return true;
+  };
 
   // Sync when tree or initialPageId changes
   React.useEffect(() => {
@@ -93,29 +104,77 @@ export function BoardViewer({
       onButtonClick(button);
     }
 
-    // Check if button links to another page via targetPageId or semanticAction
+    const intent = button.semanticAction?.intent
+      ? String(button.semanticAction.intent)
+      : undefined;
     const targetPageId = button.targetPageId || button.semanticAction?.targetId;
+    const effort = buttonMetricsLookup[button.id]?.effort || 1;
+    const textValue =
+      button.semanticAction?.text || button.message || button.label || '';
 
-    if (targetPageId && tree.pages[targetPageId]) {
-      if (currentPage) {
-        setPageHistory((prev) => [...prev, currentPage]);
-      }
-      setCurrentPageId(targetPageId);
-      if (onPageChange) {
-        onPageChange(targetPageId);
-      }
+    const deleteLastWord = () => {
+      setMessage((prev) => {
+        const parts = prev.trim().split(/\s+/);
+        parts.pop();
+        const newMsg = parts.join(' ');
+        return newMsg;
+      });
+    };
+
+    const deleteLastCharacter = () => {
+      setMessage((prev) => prev.slice(0, -1));
+    };
+
+    const appendText = (word: string) => {
+      const trimmed = word || button.label || '';
+      setMessage((prev) => {
+        const newMessage = trimmed
+          ? prev + (prev ? ' ' : '') + trimmed
+          : prev;
+        if (trimmed) {
+          updateStats(trimmed, effort);
+        }
+        return newMessage;
+      });
+    };
+
+    // Navigation takes precedence
+    if (intent === 'NAVIGATE_TO' && goToPage(targetPageId)) {
+      return;
+    }
+
+    switch (intent) {
+      case 'GO_BACK':
+        handleBack();
+        return;
+      case 'GO_HOME':
+        if (tree.rootId && goToPage(tree.rootId)) return;
+        break;
+      case 'DELETE_WORD':
+        deleteLastWord();
+        return;
+      case 'DELETE_CHARACTER':
+        deleteLastCharacter();
+        return;
+      case 'CLEAR_TEXT':
+        clearMessage();
+        return;
+      case 'SPEAK_IMMEDIATE':
+      case 'SPEAK_TEXT':
+      case 'INSERT_TEXT':
+        appendText(textValue);
+        return;
+      default:
+        break;
+    }
+
+    // Fallback navigation if intent not set but target exists
+    if (targetPageId && goToPage(targetPageId)) {
       return;
     }
 
     // Otherwise add to message
-    const word = button.message || button.label;
-    const effort = buttonMetricsLookup[button.id]?.effort || 1;
-
-    setMessage((prev) => {
-      const newMessage = prev + (prev ? ' ' : '') + word;
-      updateStats(word, effort);
-      return newMessage;
-    });
+    appendText(textValue);
   };
 
   const handleBack = () => {
@@ -322,63 +381,107 @@ export function BoardViewer({
               gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
             }}
           >
-            {currentPage.grid.map((row, rowIndex) =>
-              row.map((button, colIndex) => {
-                if (!button) {
-                  return <div key={`empty-${rowIndex}-${colIndex}`} className="aspect-square" />;
-                }
+            {(() => {
+              const rendered = new Set<string>();
+              return currentPage.grid.flatMap((row, rowIndex) =>
+                row.map((button, colIndex) => {
+                  if (!button) {
+                    return <div key={`empty-${rowIndex}-${colIndex}`} className="aspect-square" />;
+                  }
 
-                const buttonMetric = buttonMetricsLookup[button.id];
-                const effort = buttonMetric?.effort || 0;
-                const targetPageId = button.targetPageId || button.semanticAction?.targetId;
-                const hasLink = targetPageId && tree.pages[targetPageId];
+                  if (rendered.has(button.id)) {
+                    return null;
+                  }
+                  rendered.add(button.id);
 
-                return (
-                  <button
-                    key={button.id}
-                    onClick={() => handleButtonClick(button)}
-                    className="relative aspect-square p-2 rounded-lg border-2 transition flex flex-col items-center justify-center gap-1 hover:opacity-80 hover:scale-105 active:scale-95"
-                    style={{
-                      backgroundColor: button.style?.backgroundColor || '#f3f4f6',
-                      borderColor: button.style?.borderColor || '#e5e7eb',
-                      color: button.style?.fontColor || undefined,
-                    }}
-                  >
-                    {/* Effort Badge */}
-                    {buttonMetric && showEffortBadges && (
-                      <div className="absolute top-1 right-1 px-1.5 py-0.5 text-xs font-semibold rounded bg-blue-600 text-white shadow-sm">
-                        {effort.toFixed(1)}
-                      </div>
-                    )}
+                  const buttonMetric = buttonMetricsLookup[button.id];
+                  const effort = buttonMetric?.effort || 0;
+                  const targetPageId = button.targetPageId || button.semanticAction?.targetId;
+                  const hasLink = targetPageId && tree.pages[targetPageId];
+                  const colSpan = button.columnSpan || 1;
+                  const rowSpan = button.rowSpan || 1;
+                  const predictions =
+                    (button.parameters as any)?.predictions as string[] | undefined;
+                  const isPredictionCell =
+                    button.contentType === 'AutoContent' &&
+                    (button.contentSubType || '').toLowerCase() === 'prediction';
 
-                    {/* Link Indicator */}
-                    {hasLink && showLinkIndicators && (
-                      <div className="absolute top-1 left-1 w-2 h-2 bg-green-500 rounded-full shadow-sm" />
-                    )}
+                  const imageSrc =
+                    (button.resolvedImageEntry && !String(button.resolvedImageEntry).startsWith('[')
+                      ? button.resolvedImageEntry
+                      : null) ||
+                    (button.image && !String(button.image).startsWith('[') ? button.image : null);
 
-                    {/* Label */}
-                    <span
-                      className={`text-xs sm:text-sm text-center font-medium leading-tight line-clamp-3 ${getTextColor(
-                        button.style?.backgroundColor
-                      )}`}
+                  return (
+                    <button
+                      key={button.id}
+                      onClick={() => handleButtonClick(button)}
+                      className="relative aspect-square p-2 rounded-lg border-2 transition flex flex-col items-center justify-center gap-1 hover:opacity-80 hover:scale-105 active:scale-95"
+                      style={{
+                        backgroundColor: button.style?.backgroundColor || '#f3f4f6',
+                        borderColor: button.style?.borderColor || '#e5e7eb',
+                        color: button.style?.fontColor || undefined,
+                        gridColumn: `${colIndex + 1} / span ${colSpan}`,
+                        gridRow: `${rowIndex + 1} / span ${rowSpan}`,
+                      }}
                     >
-                      {button.label}
-                    </span>
+                      {/* Effort Badge */}
+                      {buttonMetric && showEffortBadges && (
+                        <div className="absolute top-1 right-1 px-1.5 py-0.5 text-xs font-semibold rounded bg-blue-600 text-white shadow-sm">
+                          {effort.toFixed(1)}
+                        </div>
+                      )}
 
-                    {/* Message (if different from label) */}
-                    {button.message && button.message !== button.label && (
-                      <span
-                        className={`text-[10px] sm:text-xs text-center opacity-75 line-clamp-2 ${getTextColor(
-                          button.style?.backgroundColor
-                        )}`}
-                      >
-                        {button.message}
-                      </span>
-                    )}
-                  </button>
-                );
-              })
-            )}
+                      {/* Link Indicator */}
+                      {hasLink && showLinkIndicators && (
+                        <div className="absolute top-1 left-1 w-2 h-2 bg-green-500 rounded-full shadow-sm" />
+                      )}
+
+                      {/* Image */}
+                      {imageSrc && (
+                        <img
+                          src={imageSrc}
+                          alt={button.label}
+                          className="max-h-12 object-contain"
+                        />
+                      )}
+
+                      {/* Label / Predictions */}
+                      <div className="flex flex-col items-center justify-center">
+                        <span
+                          className={`text-xs sm:text-sm text-center font-medium leading-tight line-clamp-3 ${getTextColor(
+                            button.style?.backgroundColor
+                          )}`}
+                        >
+                          {button.label}
+                        </span>
+                        {isPredictionCell && predictions && predictions.length > 0 && (
+                          <div className="mt-1 text-[10px] sm:text-xs text-center opacity-80 space-y-0.5">
+                            {predictions.slice(0, 3).map((p, idx) => (
+                              <div key={`${button.id}-pred-${idx}`}>
+                                {p}
+                              </div>
+                            ))}
+                            {predictions.length > 3 && <div>…</div>}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Message (if different from label) */}
+                      {button.message && button.message !== button.label && !isPredictionCell && (
+                        <span
+                          className={`text-[10px] sm:text-xs text-center opacity-75 line-clamp-2 ${getTextColor(
+                            button.style?.backgroundColor
+                          )}`}
+                        >
+                          {button.message}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              );
+            })()}
           </div>
 
           {/* Page Navigation (if multiple pages) */}

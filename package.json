@@ -54,7 +54,7 @@
     "react-dom": "^18.0.0"
   },
   "dependencies": {
-    "@willwade/aac-processors": "^0.0.23"
+    "@willwade/aac-processors": "^0.0.24"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",
