@@ -105,6 +105,7 @@ export function BoardViewer({
   onButtonClick,
   onPageChange,
   className = '',
+  loadId,
 }: BoardViewerProps) {
   const resolveInitialPageId = useCallback(() => {
     // Explicit override
@@ -538,6 +539,25 @@ export function BoardViewer({
                       : null) ||
                     (button.image && !String(button.image).startsWith('[') ? button.image : null);
 
+                  // For OBZ files with loadId, use the image API endpoint
+                  // For Grid3 files, also use API if we have gridPageName and position
+                  const params = button.parameters as {
+                    image_id?: string;
+                    gridPageName?: string;
+                  };
+
+                  let apiUrl: string | undefined = undefined;
+                  if (loadId && button.image) {
+                    // OBZ files have large data URLs or image_id
+                    if (button.image.length > 1000 && params.image_id) {
+                      apiUrl = `/api/image/${loadId}/${params.image_id}`;
+                    }
+                    // Grid3 files have gridPageName and x,y coordinates
+                    else if (params.gridPageName && button.x !== undefined && button.y !== undefined) {
+                      apiUrl = `/api/image/${loadId}/${params.gridPageName}/${button.x}-${button.y}`;
+                    }
+                  }
+
                   if (isWorkspace) {
                     return (
                       <div
@@ -594,9 +614,9 @@ export function BoardViewer({
                       )}
 
                       {/* Image */}
-                      {imageSrc && (
+                      {(imageSrc || apiUrl) && (
                         <img
-                          src={imageSrc}
+                          src={(apiUrl || imageSrc) ?? undefined}
                           alt={button.label}
                           className="max-h-12 object-contain"
                         />

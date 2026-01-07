@@ -54,6 +54,8 @@ export interface BoardViewerProps {
   onPageChange?: (pageId: string) => void;
   /** Custom CSS class name */
   className?: string;
+  /** Load ID for fetching images from server (for OBZ files) */
+  loadId?: string;
 }
 
 /**

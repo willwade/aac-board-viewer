@@ -16,6 +16,7 @@ function App() {
   const [homePageId, setHomePageId] = useState<string | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [shouldValidate, setShouldValidate] = useState(false);
+  const [loadId, setLoadId] = useState<string | null>(null);
 
   const formatValidationSummary = (result: ValidationResult) =>
     `${result.valid ? 'Valid' : 'Invalid'} · ${result.errors} errors · ${result.warnings} warnings`;
@@ -29,6 +30,7 @@ function App() {
     setMetadata(null);
     setHomePageId(null);
     setValidation(null);
+    setLoadId(null);
 
     try {
       const response = await fetch('/api/load', {
@@ -59,10 +61,12 @@ function App() {
         format?: string;
         metadata?: Record<string, unknown>;
         validation?: ValidationResult;
+        loadId?: string;
       };
       setTree(result.tree as AACTree);
       setFormat(result.format || null);
       setMetadata((result.metadata as Record<string, unknown>) || null);
+      setLoadId(result.loadId || null);
       if (result.tree?.rootId) {
         setHomePageId(result.tree.rootId);
       } else {
@@ -187,7 +191,7 @@ function App() {
               )}
             </div>
             <div className="board-container">
-              <BoardViewer tree={tree} initialPageId={homePageId || undefined} />
+              <BoardViewer tree={tree} initialPageId={homePageId || undefined} loadId={loadId || undefined} />
             </div>
             {validation && (
               <div className="board-meta" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
