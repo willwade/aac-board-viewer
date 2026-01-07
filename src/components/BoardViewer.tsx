@@ -14,10 +14,11 @@ interface PredictionsTooltipProps {
   predictions: string[];
   label: string;
   position: { x: number; y: number };
+  buttonMetricsLookup: { [buttonId: string]: ButtonMetric };
   onClose: () => void;
 }
 
-function PredictionsTooltip({ predictions, label, position, onClose }: PredictionsTooltipProps) {
+function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup, onClose }: PredictionsTooltipProps) {
   // Close tooltip when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -52,14 +53,25 @@ function PredictionsTooltip({ predictions, label, position, onClose }: Predictio
         </button>
       </div>
       <div className="flex flex-wrap gap-1">
-        {predictions.map((word, idx) => (
-          <span
-            key={idx}
-            className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium"
-          >
-            {word}
-          </span>
-        ))}
+        {predictions.map((word, idx) => {
+          // Try to find metrics for this word form by label
+          const metricForWord = Object.values(buttonMetricsLookup).find(m => m.label === word);
+          const effort = metricForWord?.effort;
+
+          return (
+            <span
+              key={idx}
+              className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium relative"
+            >
+              {effort !== undefined && (
+                <span className="absolute -top-1 -right-1 px-1 py-0 text-[8px] font-semibold rounded bg-blue-600 text-white shadow-xs">
+                  {effort.toFixed(1)}
+                </span>
+              )}
+              {word}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -135,6 +147,7 @@ export function BoardViewer({
     predictions: string[];
     label: string;
     position: { x: number; y: number };
+    buttonMetricsLookup: { [buttonId: string]: ButtonMetric };
   } | null>(null);
 
   // Convert button metrics array to lookup object for easy access
@@ -279,6 +292,7 @@ export function BoardViewer({
         predictions,
         label: button.label,
         position: { x: event.clientX, y: event.clientY },
+        buttonMetricsLookup,
       });
     }
   };
@@ -622,6 +636,7 @@ export function BoardViewer({
           predictions={predictionsTooltip.predictions}
           label={predictionsTooltip.label}
           position={predictionsTooltip.position}
+          buttonMetricsLookup={predictionsTooltip.buttonMetricsLookup}
           onClose={() => setPredictionsTooltip(null)}
         />
       )}
