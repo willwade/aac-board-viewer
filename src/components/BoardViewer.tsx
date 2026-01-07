@@ -16,9 +16,10 @@ interface PredictionsTooltipProps {
   position: { x: number; y: number };
   buttonMetricsLookup: { [buttonId: string]: ButtonMetric };
   onClose: () => void;
+  onWordClick?: (word: string, effort: number) => void;
 }
 
-function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup, onClose }: PredictionsTooltipProps) {
+function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup, onClose, onWordClick }: PredictionsTooltipProps) {
   // Close tooltip when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -37,6 +38,7 @@ function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup,
         left: `${Math.min(position.x, window.innerWidth - 200)}px`,
         top: `${Math.min(position.y, window.innerHeight - 150)}px`,
       }}
+      onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to underlying button
     >
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -61,7 +63,15 @@ function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup,
           return (
             <span
               key={idx}
-              className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium relative"
+              className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium relative cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-800 transition"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent bubbling
+                if (onWordClick) {
+                  onWordClick(word, effort || 1.0);
+                  onClose();
+                }
+              }}
+              title={`Click to add "${word}" to message`}
             >
               {effort !== undefined && (
                 <span className="absolute -top-1 -right-1 px-1 py-0 text-[8px] font-semibold rounded bg-blue-600 text-white shadow-xs">
@@ -148,6 +158,7 @@ export function BoardViewer({
     label: string;
     position: { x: number; y: number };
     buttonMetricsLookup: { [buttonId: string]: ButtonMetric };
+    onWordClick?: (word: string, effort: number) => void;
   } | null>(null);
 
   // Convert button metrics array to lookup object for easy access
@@ -293,6 +304,16 @@ export function BoardViewer({
         label: button.label,
         position: { x: event.clientX, y: event.clientY },
         buttonMetricsLookup,
+        onWordClick: (word, effort) => {
+          const trimmed = word || '';
+          if (trimmed) {
+            setMessage((prev) => {
+              const newMessage = prev + (prev ? ' ' : '') + trimmed;
+              updateStats(trimmed, effort);
+              return newMessage;
+            });
+          }
+        },
       });
     }
   };
@@ -637,6 +658,7 @@ export function BoardViewer({
           label={predictionsTooltip.label}
           position={predictionsTooltip.position}
           buttonMetricsLookup={predictionsTooltip.buttonMetricsLookup}
+          onWordClick={predictionsTooltip.onWordClick}
           onClose={() => setPredictionsTooltip(null)}
         />
       )}
