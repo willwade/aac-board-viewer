@@ -6,6 +6,66 @@ import type {
 import type { BoardViewerProps, ButtonMetric } from '../types';
 
 /**
+ * Predictions Tooltip Component
+ *
+ * Shows a tooltip with predicted word forms when clicking the predictions indicator
+ */
+interface PredictionsTooltipProps {
+  predictions: string[];
+  label: string;
+  position: { x: number; y: number };
+  onClose: () => void;
+}
+
+function PredictionsTooltip({ predictions, label, position, onClose }: PredictionsTooltipProps) {
+  // Close tooltip when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (e.target instanceof HTMLElement && !e.target.closest('.predictions-tooltip')) {
+        onClose();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  return (
+    <div
+      className="predictions-tooltip fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border-2 border-purple-500 p-3 max-w-xs"
+      style={{
+        left: `${Math.min(position.x, window.innerWidth - 200)}px`,
+        top: `${Math.min(position.y, window.innerHeight - 150)}px`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+          Word forms for &quot;{label}&quot;
+        </h4>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+          aria-label="Close"
+        >
+          <svg className="h-4 w-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {predictions.map((word, idx) => (
+          <span
+            key={idx}
+            className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium"
+          >
+            {word}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
  * AAC Board Viewer Component
  *
  * Displays AAC boards with interactive navigation, sentence building,
@@ -69,6 +129,13 @@ export function BoardViewer({
   const [message, setMessage] = useState('');
   const [currentWordCount, setCurrentWordCount] = useState(0);
   const [currentEffort, setCurrentEffort] = useState(0);
+
+  // Predictions tooltip state
+  const [predictionsTooltip, setPredictionsTooltip] = useState<{
+    predictions: string[];
+    label: string;
+    position: { x: number; y: number };
+  } | null>(null);
 
   // Convert button metrics array to lookup object for easy access
   const buttonMetricsLookup = useMemo(() => {
@@ -199,6 +266,21 @@ export function BoardViewer({
     setMessage('');
     setCurrentWordCount(0);
     setCurrentEffort(0);
+  };
+
+  const handleShowPredictions = (
+    button: AACButton,
+    event: React.MouseEvent<HTMLDivElement>
+  ) => {
+    event.stopPropagation(); // Prevent button click
+    const predictions = button.predictions || (button.parameters as { predictions?: string[] })?.predictions;
+    if (predictions && predictions.length > 0) {
+      setPredictionsTooltip({
+        predictions,
+        label: button.label,
+        position: { x: event.clientX, y: event.clientY },
+      });
+    }
   };
 
   const getTextColor = (backgroundColor?: string) => {
@@ -408,7 +490,8 @@ export function BoardViewer({
                   const colSpan = button.columnSpan || 1;
                   const rowSpan = button.rowSpan || 1;
                   const predictions =
-                    (button.parameters as any)?.predictions as string[] | undefined;
+                    button.predictions || (button.parameters as { predictions?: string[] })?.predictions;
+                  const hasPredictions = predictions && predictions.length > 0;
                   const isPredictionCell =
                     button.contentType === 'AutoContent' &&
                     (button.contentSubType || '').toLowerCase() === 'prediction';
@@ -462,6 +545,17 @@ export function BoardViewer({
                       {/* Link Indicator */}
                       {hasLink && showLinkIndicators && (
                         <div className="absolute top-1 left-1 w-2 h-2 bg-green-500 rounded-full shadow-sm" />
+                      )}
+
+                      {/* Predictions Indicator */}
+                      {hasPredictions && (
+                        <div
+                          onClick={(e) => handleShowPredictions(button, e)}
+                          className="absolute bottom-1 right-1 px-1.5 py-0.5 text-xs font-semibold rounded bg-purple-600 text-white shadow-sm cursor-pointer hover:bg-purple-700 transition"
+                          title={`Has ${predictions?.length} word form${predictions && predictions.length > 1 ? 's' : ''}`}
+                        >
+                          {predictions?.length}
+                        </div>
                       )}
 
                       {/* Image */}
@@ -521,6 +615,16 @@ export function BoardViewer({
           )}
         </div>
       </div>
+
+      {/* Predictions Tooltip */}
+      {predictionsTooltip && (
+        <PredictionsTooltip
+          predictions={predictionsTooltip.predictions}
+          label={predictionsTooltip.label}
+          position={predictionsTooltip.position}
+          onClose={() => setPredictionsTooltip(null)}
+        />
+      )}
     </div>
   );
 }
