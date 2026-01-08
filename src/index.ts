@@ -10,7 +10,9 @@ export { BoardViewer } from './components/BoardViewer';
 // Hooks
 export {
   useAACFile,
+  useAACFileFromFile,
   useAACFileWithMetrics,
+  useAACFileFromFileWithMetrics,
   useMetrics,
   useSentenceBuilder,
 } from './hooks/useAACFile';
@@ -19,10 +21,12 @@ export {
 export {
   loadAACFile,
   loadAACFileFromURL,
-  loadAACFileFromFile,
   loadAACFileWithMetadata,
   calculateMetrics,
   getSupportedFormats,
+  isBrowserCompatible,
+  getBrowserExtensions,
+  getNodeOnlyExtensions,
 } from './utils/loaders';
 
 // Types

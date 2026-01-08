@@ -1,121 +1,140 @@
 import React, { useState } from 'react';
 import type { AACTree } from 'aac-board-viewer';
-import { BoardViewer } from 'aac-board-viewer';
+import {
+  BoardViewer,
+  useAACFileFromFile,
+  getSupportedFormats,
+  isBrowserCompatible,
+  getBrowserExtensions,
+  getNodeOnlyExtensions
+} from 'aac-board-viewer';
 import 'aac-board-viewer/styles';
 import { FileUploader } from './FileUploader';
 import './App.css';
 import type { ValidationResult, ValidationCheck } from '@willwade/aac-processors/validation';
 
 function App() {
-  const [tree, setTree] = useState<AACTree | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>('');
-  const [format, setFormat] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<Record<string, unknown> | null>(null);
-  const [homePageId, setHomePageId] = useState<string | null>(null);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const [shouldValidate, setShouldValidate] = useState(false);
-  const [loadId, setLoadId] = useState<string | null>(null);
+  const [useServer, setUseServer] = useState(false);
+  const [serverData, setServerData] = useState<{
+    tree: AACTree;
+    format: string;
+    metadata: Record<string, unknown>;
+    loadId: string;
+    validation?: ValidationResult;
+  } | null>(null);
 
-  const formatValidationSummary = (result: ValidationResult) =>
-    `${result.valid ? 'Valid' : 'Invalid'} · ${result.errors} errors · ${result.warnings} warnings`;
+  // Use the browser-based hook for loading
+  const { tree, loading, error: hookError } = useAACFileFromFile(file, {
+    enabled: !useServer, // Only use hook when not in server mode
+  });
+
+  // Sync errors
+  React.useEffect(() => {
+    if (hookError) {
+      setError(`Error: ${hookError.message}`);
+    } else {
+      setError(null);
+    }
+  }, [hookError]);
+
+  const formats = getSupportedFormats();
+  const browserFormats = formats.filter((f) => f.browserCompatible);
+  const serverOnlyFormats = formats.filter((f) => !f.browserCompatible);
 
   const handleFileLoad = async (file: File) => {
-    setLoading(true);
+    setFile(file);
     setError(null);
-    setFileName(file.name);
-    setTree(null);
-    setFormat(null);
-    setMetadata(null);
-    setHomePageId(null);
-    setValidation(null);
-    setLoadId(null);
+    setServerData(null);
 
+    // Check if we should use server mode
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    const needsServer = !isBrowserCompatible(ext);
+
+    if (needsServer || useServer) {
+      await loadWithServer(file);
+    }
+    // Otherwise, the hook will handle it in browser
+  };
+
+  const loadWithServer = async (file: File) => {
     try {
       const response = await fetch('/api/load', {
         method: 'POST',
         headers: {
           'x-filename': encodeURIComponent(file.name),
-          'x-validate': shouldValidate ? 'true' : 'false',
         },
         body: file,
       });
 
-      // Try to parse JSON either way so we can surface validation details
-      const parsed = await response.json().catch(() => null);
       if (!response.ok) {
-        const validationResult = parsed?.validation as ValidationResult | undefined;
-        if (validationResult) {
-          setValidation(validationResult);
-        }
-        const message =
-          parsed?.message ||
-          (validationResult ? `Validation failed: ${formatValidationSummary(validationResult)}` : null) ||
-          'Failed to process file on server';
-        throw new Error(message);
+        throw new Error(`Server error: ${response.statusText}`);
       }
 
-      const result = parsed as {
-        tree: AACTree;
-        format?: string;
-        metadata?: Record<string, unknown>;
-        validation?: ValidationResult;
-        loadId?: string;
-      };
-      setTree(result.tree as AACTree);
-      setFormat(result.format || null);
-      setMetadata((result.metadata as Record<string, unknown>) || null);
-      setLoadId(result.loadId || null);
-      if (result.tree?.rootId) {
-        setHomePageId(result.tree.rootId);
-      } else {
-        const firstPage = Object.keys(result.tree?.pages || {})[0];
-        setHomePageId(firstPage || null);
-      }
-      setValidation((result.validation as ValidationResult) || null);
+      const result = await response.json();
+      setServerData({
+        tree: result.tree as AACTree,
+        format: result.format || 'unknown',
+        metadata: (result.metadata as Record<string, unknown>) || {},
+        loadId: result.loadId || '',
+        validation: result.validation as ValidationResult | undefined,
+      });
     } catch (err) {
       setError(
-        `Error loading file: ${err instanceof Error ? err.message : 'Unknown error'}\n\n` +
-        'The server-side processor could not load this file. Please check the format and try again.'
+        `Server error: ${err instanceof Error ? err.message : 'Unknown error'}\n\n` +
+        'The server could not process this file.'
       );
-    } finally {
-      setLoading(false);
     }
   };
 
-  const formats = [
-    { name: 'Grid 3', extensions: ['.gridset'] },
-    { name: 'TD Snap', extensions: ['.sps', '.spb'] },
-    { name: 'TouchChat', extensions: ['.ce'] },
-    { name: 'OpenBoard', extensions: ['.obf', '.obz'] },
-    { name: 'Asterics', extensions: ['.grd'] },
-    { name: 'Apple Panels', extensions: ['.plist'] },
-    { name: 'OPML', extensions: ['.opml'] },
-    { name: 'Excel', extensions: ['.xlsx', '.xls'] },
-    { name: 'DOT', extensions: ['.dot'] },
-  ];
+  const currentTree = useServer ? serverData?.tree : tree;
+  const currentFormat = useServer ? serverData?.format : (file ? '.' + file.name.split('.').pop() : undefined);
+  const currentMetadata = useServer ? serverData?.metadata : (tree?.metadata);
+  const currentLoadId = useServer ? serverData?.loadId : undefined;
+  const currentValidation = useServer ? serverData?.validation : null;
 
-  const pageOptions = tree ? Object.values(tree.pages) : [];
+  const fileName = file?.name || '';
+  const ext = fileName ? '.' + fileName.split('.').pop()?.toLowerCase() : '';
+  const isServerOnlyFormat = ext ? !isBrowserCompatible(ext) : false;
+
+  const pageOptions = currentTree ? Object.values(currentTree.pages) : [];
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>AAC Board Viewer Demo</h1>
-        <p>Universal AAC board viewer for React - Upload your AAC file to test</p>
-
-        <div className="controls">
-          <span className="format-list">
-            Supports:{' '}
-            {formats.map((f) => f.name).join(', ')}
+        <p>
+          Universal AAC board viewer - Now with browser-based loading!
+          <span style={{ marginLeft: '0.5rem', fontSize: '0.85em', color: '#6b7280' }}>
+            Powered by AACProcessors v0.1.0
           </span>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+        </p>
+
+        <div className="controls" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <span className="format-list" style={{ fontSize: '0.9rem' }}>
+            <strong style={{ color: '#15803d' }}>Browser:</strong> {browserFormats.map((f) => f.name).join(', ')}
+          </span>
+          <span className="format-list" style={{ fontSize: '0.9rem' }}>
+            <strong style={{ color: '#b91c1c' }}>Server-only:</strong> {serverOnlyFormats.map((f) => f.name).join(', ')}
+          </span>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 0.6rem',
+              backgroundColor: '#f3f4f6',
+              borderRadius: '0.35rem',
+              fontSize: '0.9rem',
+            }}
+          >
             <input
               type="checkbox"
-              checked={shouldValidate}
-              onChange={(e) => setShouldValidate(e.target.checked)}
+              checked={useServer}
+              onChange={(e) => setUseServer(e.target.checked)}
             />
-            Validate file before loading
+            Force server mode
           </label>
         </div>
       </header>
@@ -127,38 +146,51 @@ function App() {
           <div className="loading">
             <div className="spinner"></div>
             <p>Loading board...</p>
-            <p className="loading-hint">Processing {fileName}</p>
+            <p className="loading-hint">
+              {useServer ? 'Processing on server...' : 'Processing in browser...'}
+            </p>
+            <p className="loading-hint">{fileName}</p>
           </div>
         )}
 
         {error && (
           <div className="error">
-            <h2>ℹ️ File Upload Demo</h2>
+            <h2>⚠️ Error Loading File</h2>
             <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{error}</pre>
+            {isServerOnlyFormat && !useServer && (
+              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fef3c7', borderRadius: '0.35rem' }}>
+                <strong>💡 Tip:</strong> This file format requires server-side processing.
+                Enable "Force server mode" above to load it.
+              </div>
+            )}
           </div>
         )}
 
-        {!loading && !error && tree && (
+        {!loading && !error && currentTree && (
           <>
             <div className="board-meta">
               <div>
                 <strong>File:</strong> {fileName}
               </div>
-              {format && (
+              <div>
+                <strong>Mode:</strong>{' '}
+                <span style={{ color: useServer ? '#b91c1c' : '#15803d' }}>
+                  {useServer ? 'Server processing' : 'Browser processing'}
+                </span>
+              </div>
+              {currentFormat && (
                 <div>
-                  <strong>Detected format:</strong> {format}
+                  <strong>Detected format:</strong> {currentFormat}
                 </div>
               )}
-              {metadata && typeof (metadata as Record<string, unknown>).name === 'string' && (
+              {currentMetadata && typeof currentMetadata.name === 'string' && (
                 <div>
-                  <strong>Board name:</strong>{' '}
-                  {(metadata as Record<string, unknown>).name as string}
+                  <strong>Board name:</strong> {currentMetadata.name}
                 </div>
               )}
-              {metadata && (
+              {currentMetadata && (
                 <div>
-                  <strong>Metadata keys:</strong>{' '}
-                  {Object.keys(metadata as Record<string, unknown>).join(', ')}
+                  <strong>Metadata keys:</strong> {Object.keys(currentMetadata).join(', ')}
                 </div>
               )}
             </div>
@@ -167,8 +199,10 @@ function App() {
               <div>
                 <label style={{ fontWeight: 600, marginRight: '0.5rem' }}>Home page</label>
                 <select
-                  value={homePageId ?? ''}
-                  onChange={(e) => setHomePageId(e.target.value || null)}
+                  value={currentTree?.rootId ?? ''}
+                  onChange={(e) => {
+                    // You could add page selection logic here
+                  }}
                   style={{ padding: '0.4rem 0.6rem', borderRadius: '0.35rem' }}
                 >
                   <option value="">(auto)</option>
@@ -179,29 +213,24 @@ function App() {
                   ))}
                 </select>
               </div>
-              {metadata && (
-                <div style={{ fontSize: '0.9rem', color: '#4b5563' }}>
-                  <strong>Metadata:</strong>{' '}
-                  <span>
-                    {(Object.entries(metadata) as Array<[string, unknown]>)
-                      .map(([k, v]) => `${k}: ${String(v)}`)
-                      .join(' • ')}
-                  </span>
-                </div>
-              )}
             </div>
+
             <div className="board-container">
-              <BoardViewer tree={tree} initialPageId={homePageId || undefined} loadId={loadId || undefined} />
+              <BoardViewer
+                tree={currentTree}
+                loadId={currentLoadId}
+              />
             </div>
-            {validation && (
+
+            {currentValidation && (
               <div className="board-meta" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                 <strong>Validation</strong>
-                <div style={{ fontSize: '0.9rem', color: validation.valid ? '#15803d' : '#b91c1c' }}>
-                  {validation.valid ? 'Valid file' : 'Validation failed'} · {validation.errors} errors ·{' '}
-                  {validation.warnings} warnings
+                <div style={{ fontSize: '0.9rem', color: currentValidation.valid ? '#15803d' : '#b91c1c' }}>
+                  {currentValidation.valid ? 'Valid file' : 'Validation failed'} · {currentValidation.errors} errors ·{' '}
+                  {currentValidation.warnings} warnings
                 </div>
                 <ul style={{ marginLeft: '1rem', marginTop: '0.5rem', color: '#374151' }}>
-                  {validation.results.map((r: ValidationCheck, idx: number) => (
+                  {currentValidation.results.map((r: ValidationCheck, idx: number) => (
                     <li key={`${r.type}-${idx}`}>
                       <strong>{r.description}:</strong> {r.valid ? 'ok' : r.error || 'failed'}
                       {r.warnings && r.warnings.length > 0 && (
@@ -215,15 +244,34 @@ function App() {
           </>
         )}
 
-        {!loading && !error && !tree && (
+        {!loading && !error && !currentTree && (
           <div className="info">
             <h2>Welcome to AAC Board Viewer! 🎉</h2>
-            <p>Upload any AAC file above to see the viewer in action. Files are parsed on the local server using @willwade/aac-processors.</p>
+            <p>
+              <strong>NEW:</strong> Browser-based loading for most formats! Files are processed directly in your browser
+              using AACProcessors v0.1.0. No server needed for common formats like .obf, .obz, .gridset, .plist, .grd, .opml, and .dot.
+            </p>
             <div className="info-sections">
               <div className="info-card">
-                <h3>📁 Supported Formats</h3>
+                <h3>🟢 Browser-Compatible Formats</h3>
+                <p style={{ fontSize: '0.9rem', color: '#15803d', marginBottom: '0.5rem' }}>
+                  Processed directly in your browser - faster and more private!
+                </p>
                 <ul>
-                  {formats.map((f) => (
+                  {browserFormats.map((f) => (
+                    <li key={f.name}>
+                      <strong>{f.name}</strong> - {f.extensions.join(', ')}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="info-card">
+                <h3>🔴 Server-Only Formats</h3>
+                <p style={{ fontSize: '0.9rem', color: '#b91c1c', marginBottom: '0.5rem' }}>
+                  Require server-side processing (enable "Force server mode")
+                </p>
+                <ul>
+                  {serverOnlyFormats.map((f) => (
                     <li key={f.name}>
                       <strong>{f.name}</strong> - {f.extensions.join(', ')}
                     </li>
@@ -233,18 +281,33 @@ function App() {
               <div className="info-card">
                 <h3>✨ Features</h3>
                 <ul>
+                  <li>🚀 Browser-based processing (no server needed!)</li>
                   <li>🎨 Preserves original styling</li>
                   <li>🔗 Interactive navigation</li>
                   <li>🗣️ Sentence building</li>
-                  <li>🌙 Dark-mode friendly (add a parent <code>dark</code> class)</li>
+                  <li>📊 Cognitive effort metrics</li>
+                  <li>🌙 Dark-mode friendly</li>
                 </ul>
               </div>
               <div className="info-card">
                 <h3>🚀 Usage</h3>
-                <pre><code>{`import { BoardViewer } from 'aac-board-viewer';
-import 'aac-board-viewer/styles';
+                <pre><code>{`// Browser-based loading
+import { useAACFileFromFile } from 'aac-board-viewer';
 
-<BoardViewer tree={treeData} />`}</code></pre>
+function MyViewer() {
+  const [file, setFile] = useState<File | null>(null);
+  const { tree, loading } = useAACFileFromFile(file);
+
+  return (
+    <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+    {tree && <BoardViewer tree={tree} />}
+  );
+}
+
+// Server-side loading
+import { loadAACFile } from 'aac-board-viewer';
+
+const tree = await loadAACFile('/path/to/file.sps');`}</code></pre>
               </div>
             </div>
           </div>
@@ -264,6 +327,10 @@ import 'aac-board-viewer/styles';
           <a href="https://www.npmjs.com/package/aac-board-viewer" target="_blank" rel="noopener noreferrer">
             npm
           </a>
+          {' · '}
+          <span style={{ color: '#6b7280', fontSize: '0.9em' }}>
+            AACProcessors v0.1.0+ for browser support
+          </span>
         </p>
       </footer>
     </div>

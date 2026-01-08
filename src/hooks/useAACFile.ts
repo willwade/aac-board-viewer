@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { loadAACFileFromURL, calculateMetrics } from '../utils/loaders';
+import { loadAACFile, loadAACFileFromURL, calculateMetrics } from '../utils/loaders';
 import type { AACTree } from '@willwade/aac-processors';
 import type { ButtonMetric, MetricsOptions } from '../types';
 
@@ -54,6 +54,71 @@ export function useAACFile(
       setLoading(false);
     }
   }, [url, options]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return {
+    tree,
+    loading,
+    error,
+    reload: load,
+  };
+}
+
+/**
+ * Hook to load an AAC file from a File object (Browser only)
+ *
+ * @param file - File object from file input
+ * @param options - Processor options
+ * @returns Object with tree, loading state, and error
+ *
+ * @example
+ * ```tsx
+ * function MyUploader() {
+ *   const [file, setFile] = useState<File | null>(null);
+ *   const { tree, loading, error } = useAACFileFromFile(file);
+ *
+ *   return (
+ *     <div>
+ *       <input type="file" onChange={(e) => setFile(e.target.files?.[0])} />
+ *       {loading && <div>Loading...</div>}
+ *       {tree && <BoardViewer tree={tree} />}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useAACFileFromFile(
+  file: File | Blob | null,
+  options?: {
+    processorOptions?: Record<string, unknown>;
+    enabled?: boolean;
+  }
+) {
+  const [tree, setTree] = useState<AACTree | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const load = useCallback(async () => {
+    if (!file || options?.enabled === false) {
+      setTree(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const loadedTree = await loadAACFile(file, options?.processorOptions);
+      setTree(loadedTree);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to load file'));
+    } finally {
+      setLoading(false);
+    }
+  }, [file, options]);
 
   useEffect(() => {
     load();
@@ -123,6 +188,82 @@ export function useAACFileWithMetrics(
       setLoading(false);
     }
   }, [url, metricsOptions, fileOptions]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return {
+    tree,
+    metrics,
+    loading,
+    error,
+    reload: load,
+  };
+}
+
+/**
+ * Hook to load an AAC file from a File object and calculate metrics
+ *
+ * @param file - File object from file input
+ * @param metricsOptions - Metrics calculation options
+ * @returns Object with tree, metrics, loading state, and error
+ *
+ * @example
+ * ```tsx
+ * function MyUploader() {
+ *   const [file, setFile] = useState<File | null>(null);
+ *   const { tree, metrics, loading, error } = useAACFileFromFileWithMetrics(
+ *     file,
+ *     { accessMethod: 'direct' }
+ *   );
+ *
+ *   return (
+ *     <div>
+ *       <input type="file" onChange={(e) => setFile(e.target.files?.[0])} />
+ *       {loading && <div>Loading...</div>}
+ *       {tree && <BoardViewer tree={tree} buttonMetrics={metrics} />}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useAACFileFromFileWithMetrics(
+  file: File | Blob | null,
+  metricsOptions?: MetricsOptions,
+  fileOptions?: {
+    processorOptions?: Record<string, unknown>;
+    enabled?: boolean;
+  }
+) {
+  const [tree, setTree] = useState<AACTree | null>(null);
+  const [metrics, setMetrics] = useState<ButtonMetric[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const load = useCallback(async () => {
+    if (!file || fileOptions?.enabled === false) {
+      setTree(null);
+      setMetrics(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const loadedTree = await loadAACFile(file, fileOptions?.processorOptions);
+      setTree(loadedTree);
+
+      // Calculate metrics
+      const calculatedMetrics = await calculateMetrics(loadedTree, metricsOptions || {});
+      setMetrics(calculatedMetrics);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to load file'));
+    } finally {
+      setLoading(false);
+    }
+  }, [file, metricsOptions, fileOptions]);
 
   useEffect(() => {
     load();

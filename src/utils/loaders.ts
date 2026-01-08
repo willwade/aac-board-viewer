@@ -2,7 +2,10 @@
  * AAC File Loading Utilities
  *
  * Provides utilities for loading AAC files from various sources
- * (URLs, File objects, file paths) in both client and server contexts.
+ * (File/Blob objects, file paths, URLs) in both browser and server contexts.
+ *
+ * Browser: Supports .obf, .obz, .gridset, .plist, .grd, .opml, .dot
+ * Node.js: Supports all formats including .sps, .spb, .ce (Node-only processors)
  */
 
 import type { AACTree } from '@willwade/aac-processors';
@@ -12,7 +15,22 @@ type ProcessorOptions = Record<string, unknown> | undefined;
 
 type ProcessorModule = typeof import('@willwade/aac-processors');
 
-// Lazily load processors so browser bundles avoid pulling in Node APIs
+// Node-only file extensions that require server-side processing
+const NODE_ONLY_EXTENSIONS = ['.sps', '.spb', '.ce'];
+
+// Browser-compatible file extensions
+const BROWSER_EXTENSIONS = ['.obf', '.obz', '.gridset', '.plist', '.grd', '.opml', '.dot'];
+
+/**
+ * Detect if running in browser environment
+ */
+function isBrowserEnvironment(): boolean {
+  return typeof window !== 'undefined' && typeof window.document !== 'undefined';
+}
+
+/**
+ * Lazily load processors so browser bundles avoid pulling in Node APIs
+ */
 async function importProcessors(): Promise<ProcessorModule> {
   return import('@willwade/aac-processors');
 }
@@ -20,76 +38,49 @@ async function importProcessors(): Promise<ProcessorModule> {
 /**
  * Get the appropriate processor for a file based on its extension
  */
-async function getProcessorForFile(filepath: string, options?: ProcessorOptions) {
-  const {
-    getProcessor,
-    GridsetProcessor,
-    SnapProcessor,
-    TouchChatProcessor,
-    ObfProcessor,
-    ApplePanelsProcessor,
-    AstericsGridProcessor,
-    OpmlProcessor,
-    ExcelProcessor,
-    DotProcessor,
-  } = await importProcessors();
+async function getProcessorForFile(
+  filepath: string,
+  options?: ProcessorOptions
+): Promise<{ processor: any; extension: string }> {
+  const { getProcessor } = await importProcessors();
 
-  const ext = filepath.toLowerCase();
-
-  // GridSet files (.gridset)
-  if (ext.endsWith('.gridset')) {
-    return new GridsetProcessor();
+  const ext = filepath.toLowerCase().split('.').pop();
+  if (!ext) {
+    throw new Error('Invalid file path: no extension found');
   }
 
-  // SNAP files (.sps, .spb)
-  if (ext.endsWith('.sps') || ext.endsWith('.spb')) {
-    return options ? new SnapProcessor(null, options) : new SnapProcessor();
+  const extension = '.' + ext;
+
+  // Check if this is a Node-only processor in browser environment
+  if (isBrowserEnvironment() && NODE_ONLY_EXTENSIONS.includes(extension)) {
+    throw new Error(
+      `File type ${extension} requires server-side processing. ` +
+      `Please use the server API or upload a browser-compatible format. ` +
+      `Browser supports: ${BROWSER_EXTENSIONS.join(', ')}`
+    );
   }
 
-  // TouchChat files (.ce)
-  if (ext.endsWith('.ce')) {
-    return new TouchChatProcessor();
+  // Use the factory function from v0.1.0
+  const processor = getProcessor(extension);
+
+  if (!processor) {
+    throw new Error(`Unsupported file type: ${extension}`);
   }
 
-  // OpenBoard files (.obf, .obz)
-  if (ext.endsWith('.obf')) {
-    return new ObfProcessor();
-  }
-  if (ext.endsWith('.obz')) {
-    return new ObfProcessor();
-  }
-
-  // Asterics Grid files (.grd)
-  if (ext.endsWith('.grd')) {
-    return new AstericsGridProcessor();
+  // For SNAP processor, it needs special options
+  if (extension === '.sps' || extension === '.spb') {
+    const { SnapProcessor } = await importProcessors();
+    return {
+      processor: options ? new SnapProcessor(null, options) : new SnapProcessor(),
+      extension,
+    };
   }
 
-  // Apple Panels files
-  if (ext.endsWith('.plist')) {
-    return new ApplePanelsProcessor();
-  }
-
-  // OPML files
-  if (ext.endsWith('.opml')) {
-    return new OpmlProcessor();
-  }
-
-  // Excel files
-  if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) {
-    return new ExcelProcessor();
-  }
-
-  // DOT files
-  if (ext.endsWith('.dot')) {
-    return new DotProcessor();
-  }
-
-  // Fallback to generic processor detection
-  return getProcessor(filepath);
+  return { processor, extension };
 }
 
 /**
- * Load an AAC file from a file path (server-side only)
+ * Load an AAC file from a file path (Node.js only)
  *
  * @param filepath - Path to the AAC file
  * @param options - Processor options (e.g., pageLayoutPreference for SNAP)
@@ -103,25 +94,184 @@ async function getProcessorForFile(filepath: string, options?: ProcessorOptions)
 export async function loadAACFile(
   filepath: string,
   options?: ProcessorOptions
+): Promise<AACTree>;
+
+/**
+ * Load an AAC file from a File or Blob object (Browser only)
+ *
+ * @param file - File or Blob object
+ * @param options - Processor options
+ * @returns Promise resolving to AACTree
+ *
+ * @example
+ * ```ts
+ * const input = document.querySelector('input[type="file"]');
+ * const file = input.files[0];
+ * const tree = await loadAACFile(file);
+ * ```
+ */
+export async function loadAACFile(
+  file: File | Blob,
+  options?: ProcessorOptions
+): Promise<AACTree>;
+
+/**
+ * Load an AAC file from an ArrayBuffer (Browser only)
+ *
+ * @param buffer - ArrayBuffer containing file data
+ * @param filename - Filename with extension to detect processor
+ * @param options - Processor options
+ * @returns Promise resolving to AACTree
+ *
+ * @example
+ * ```ts
+ * const arrayBuffer = await file.arrayBuffer();
+ * const tree = await loadAACFile(arrayBuffer, 'board.obf');
+ * ```
+ */
+export async function loadAACFile(
+  buffer: ArrayBuffer,
+  filename: string,
+  options?: ProcessorOptions
+): Promise<AACTree>;
+
+/**
+ * Unified AAC file loading function that works in both browser and Node.js
+ */
+export async function loadAACFile(
+  input: string | File | Blob | ArrayBuffer,
+  optionsOrFilename?: ProcessorOptions | string,
+  options?: ProcessorOptions
 ): Promise<AACTree> {
-  const processor = await getProcessorForFile(filepath, options);
+  // Handle ArrayBuffer case (requires filename as second parameter)
+  if (input instanceof ArrayBuffer) {
+    const filename = typeof optionsOrFilename === 'string' ? optionsOrFilename : 'unknown.bin';
+    return loadFromArrayBuffer(input, filename, options);
+  }
+
+  // Handle File/Blob case (browser)
+  if (input instanceof File || input instanceof Blob) {
+    return loadAACFileFromFile(input, undefined, optionsOrFilename as ProcessorOptions);
+  }
+
+  // Handle string path case (Node.js or URL)
+  if (typeof input === 'string') {
+    // Check if it's a URL
+    if (input.startsWith('http://') || input.startsWith('https://')) {
+      return loadAACFileFromURL(input, optionsOrFilename as ProcessorOptions);
+    }
+    // It's a file path (Node.js only)
+    return loadFromFilePath(input, optionsOrFilename as ProcessorOptions);
+  }
+
+  throw new Error('Invalid input type. Expected File, Blob, ArrayBuffer, or file path string.');
+}
+
+/**
+ * Load from file path (Node.js only)
+ */
+async function loadFromFilePath(
+  filepath: string,
+  options?: ProcessorOptions
+): Promise<AACTree> {
+  const { processor } = await getProcessorForFile(filepath, options);
   return processor.loadIntoTree(filepath);
+}
+
+/**
+ * Load from File or Blob (Browser only)
+ */
+async function loadAACFileFromFile(
+  file: File | Blob,
+  filename?: string,
+  options?: ProcessorOptions
+): Promise<AACTree> {
+  // Extract filename from File object if not provided
+  const actualFilename = filename || (file instanceof File ? file.name : 'unknown.bin');
+
+  // Check if this is a Node-only format
+  const ext = '.' + actualFilename.toLowerCase().split('.').pop();
+  if (NODE_ONLY_EXTENSIONS.includes(ext)) {
+    throw new Error(
+      `File type ${ext} requires server-side processing. ` +
+      `Please use the server API or upload a browser-compatible format. ` +
+      `Browser supports: ${BROWSER_EXTENSIONS.join(', ')}`
+    );
+  }
+
+  // Read file as ArrayBuffer
+  const arrayBuffer = await file.arrayBuffer();
+
+  // Load using ArrayBuffer
+  return loadFromArrayBuffer(arrayBuffer, actualFilename, options);
+}
+
+/**
+ * Load from ArrayBuffer (Browser only)
+ */
+async function loadFromArrayBuffer(
+  arrayBuffer: ArrayBuffer,
+  filename: string,
+  options?: ProcessorOptions
+): Promise<AACTree> {
+  const { processor } = await getProcessorForFile(filename, options);
+
+  // AACProcessors v0.1.0+ supports loading from ArrayBuffer in browser
+  return processor.loadIntoTree(arrayBuffer);
+}
+
+/**
+ * Load an AAC file from a URL (Browser only)
+ *
+ * Note: This requires the server to provide the file with appropriate CORS headers.
+ * For better performance, consider using loadAACFileFromFile() with direct file upload instead.
+ *
+ * @param url - URL to the AAC file
+ * @param options - Processor options
+ * @returns Promise resolving to AACTree
+ *
+ * @example
+ * ```ts
+ * const tree = await loadAACFileFromURL('https://example.com/file.obf');
+ * ```
+ */
+export async function loadAACFileFromURL(
+  url: string,
+  options?: ProcessorOptions
+): Promise<AACTree> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to load file: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  const filename = getFilenameFromURL(url);
+
+  return loadAACFileFromFile(blob, filename, options);
 }
 
 /**
  * Load an AAC file and return extended result with format info
  *
- * @param filepath - Path to the AAC file
+ * @param input - File path (Node.js), File/Blob (Browser), or URL string
  * @param options - Processor options
  * @returns Promise resolving to LoadAACFileResult
  */
 export async function loadAACFileWithMetadata(
-  filepath: string,
+  input: string | File | Blob,
   options?: ProcessorOptions
 ): Promise<LoadAACFileResult> {
-  const tree = await loadAACFile(filepath, options);
+  // Call loadAACFile with type assertion to handle the union type
+  const tree = await loadAACFile(input as any, options);
 
   // Detect format from file extension
+  let filepath = '';
+  if (typeof input === 'string') {
+    filepath = input;
+  } else if (input instanceof File) {
+    filepath = input.name;
+  }
+
   const ext = filepath.toLowerCase();
   let format = 'unknown';
 
@@ -141,61 +291,6 @@ export async function loadAACFileWithMetadata(
     format,
     metadata: tree.metadata,
   };
-}
-
-/**
- * Load an AAC file from a URL (client-side)
- *
- * Note: This requires the server to provide the file with appropriate CORS headers.
- * For better performance, consider server-side loading instead.
- *
- * @param url - URL to the AAC file
- * @param options - Processor options
- * @returns Promise resolving to AACTree
- *
- * @example
- * ```ts
- * const tree = await loadAACFileFromURL('https://example.com/file.sps');
- * ```
- */
-export async function loadAACFileFromURL(
-  url: string,
-  options?: ProcessorOptions
-): Promise<AACTree> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to load file: ${response.statusText}`);
-  }
-
-  const blob = await response.blob();
-  const filename = getFilenameFromURL(url);
-
-  return loadAACFileFromFile(blob, filename, options);
-}
-
-/**
- * Load an AAC file from a File object (client-side file input)
- *
- * @param file - File object from file input
- * @param options - Processor options
- * @returns Promise resolving to AACTree
- *
- * @example
- * ```ts
- * const input = document.querySelector('input[type="file"]');
- * input.onchange = async (e) => {
- *   const file = e.target.files[0];
- *   const tree = await loadAACFileFromFile(file);
- *   // Use tree...
- * };
- * ```
- */
-export async function loadAACFileFromFile(
-  _file: File | Blob,
-  _filename?: string,
-  _options?: unknown
-): Promise<AACTree> {
-  throw new Error('Client-side file loading not yet fully implemented. Please use server-side loading or loadAACFileFromURL with proper CORS headers.');
 }
 
 /**
@@ -240,28 +335,33 @@ export async function calculateMetrics(
   } = {}
 ) {
   // Import MetricsCalculator dynamically to avoid circular dependencies
-  const { MetricsCalculator } = await import('@willwade/aac-processors');
+  const aacProcessors = await import('@willwade/aac-processors');
 
-  const calculator = new MetricsCalculator();
+  // Use the calculator if available, otherwise return empty metrics
+  if (!aacProcessors.MetricsCalculator) {
+    console.warn('MetricsCalculator not available in this environment');
+    return [];
+  }
+
+  const calculator = new aacProcessors.MetricsCalculator();
 
   let metricsOptions: Record<string, unknown> = {};
 
   if (options.accessMethod === 'scanning' && options.scanningConfig) {
-    // Import scanning enums
-    const { CellScanningOrder, ScanningSelectionMethod } = await import('@willwade/aac-processors');
-
-    let cellScanningOrder = CellScanningOrder.SimpleScan;
+    // Use string literals instead of enums to avoid import issues
+    let cellScanningOrder = 0; // SimpleScan
     let blockScanEnabled = false;
+    let selectionMethod = 0; // AutoScan
 
     switch (options.scanningConfig.pattern) {
       case 'linear':
-        cellScanningOrder = CellScanningOrder.SimpleScan;
+        cellScanningOrder = 0; // SimpleScan
         break;
       case 'row-column':
-        cellScanningOrder = CellScanningOrder.RowColumnScan;
+        cellScanningOrder = 1; // RowColumnScan
         break;
       case 'block':
-        cellScanningOrder = CellScanningOrder.RowColumnScan;
+        cellScanningOrder = 1; // RowColumnScan
         blockScanEnabled = true;
         break;
     }
@@ -270,7 +370,7 @@ export async function calculateMetrics(
       scanningConfig: {
         cellScanningOrder,
         blockScanEnabled,
-        selectionMethod: ScanningSelectionMethod.AutoScan,
+        selectionMethod,
         errorCorrectionEnabled: options.scanningConfig.errorCorrection || false,
         errorRate: 0.1,
       },
@@ -311,52 +411,87 @@ export function getSupportedFormats(): Array<{
   name: string;
   extensions: string[];
   description: string;
+  browserCompatible: boolean;
 }> {
   return [
     {
       name: 'Grid 3',
       extensions: ['.gridset'],
       description: 'Smartbox Grid 3 communication boards',
+      browserCompatible: true,
     },
     {
       name: 'TD Snap',
       extensions: ['.sps', '.spb'],
       description: 'Tobii Dynavox Snap files',
+      browserCompatible: false,
     },
     {
       name: 'TouchChat',
       extensions: ['.ce'],
       description: 'Saltillo TouchChat files',
+      browserCompatible: false,
     },
     {
       name: 'OpenBoard',
       extensions: ['.obf', '.obz'],
       description: 'OpenBoard Format (OBZ/OBF)',
+      browserCompatible: true,
     },
     {
       name: 'Asterics Grid',
       extensions: ['.grd'],
       description: 'Asterics Grid files (.grd)',
+      browserCompatible: true,
     },
     {
       name: 'Apple Panels',
       extensions: ['.plist'],
       description: 'Apple iOS Panels files',
+      browserCompatible: true,
     },
     {
       name: 'OPML',
       extensions: ['.opml'],
       description: 'OPML outline files',
+      browserCompatible: true,
     },
     {
       name: 'Excel',
       extensions: ['.xlsx', '.xls'],
       description: 'Excel spreadsheet boards',
+      browserCompatible: false,
     },
     {
       name: 'DOT',
       extensions: ['.dot'],
       description: 'DOT graph visualization files',
+      browserCompatible: true,
     },
   ];
+}
+
+/**
+ * Check if a file format is compatible with browser processing
+ *
+ * @param extension - File extension (e.g., '.obf', 'obf')
+ * @returns true if browser-compatible, false if server-only
+ */
+export function isBrowserCompatible(extension: string): boolean {
+  const ext = extension.startsWith('.') ? extension.toLowerCase() : '.' + extension.toLowerCase();
+  return BROWSER_EXTENSIONS.includes(ext);
+}
+
+/**
+ * Get list of browser-compatible file extensions
+ */
+export function getBrowserExtensions(): string[] {
+  return [...BROWSER_EXTENSIONS];
+}
+
+/**
+ * Get list of Node-only file extensions
+ */
+export function getNodeOnlyExtensions(): string[] {
+  return [...NODE_ONLY_EXTENSIONS];
 }
