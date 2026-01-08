@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "memfs": "^4.51.1",
+    "path-browserify": "^1.0.1"
+  }
+}

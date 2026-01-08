@@ -12,7 +12,7 @@ import type {
   AACSemanticAction,
   AACSemanticCategory,
   AACSemanticIntent,
-} from '@willwade/aac-processors';
+} from '@willwade/aac-processors/browser';
 
 /**
  * Button metric information for effort scoring
@@ -37,7 +37,7 @@ export interface ButtonMetric {
  */
 export interface BoardViewerProps {
   /** The AAC tree containing pages and navigation structure */
-  tree: import('@willwade/aac-processors').AACTree;
+  tree: import('@willwade/aac-processors/browser').AACTree;
   /** Optional button metrics to display effort scores */
   buttonMetrics?: ButtonMetric[] | null;
   /** Show the message bar at the top (default: true) */
@@ -49,7 +49,7 @@ export interface BoardViewerProps {
   /** Start the viewer on this page id (overrides tree.rootId) */
   initialPageId?: string;
   /** Callback when a button is clicked */
-  onButtonClick?: (button: import('@willwade/aac-processors').AACButton) => void;
+  onButtonClick?: (button: import('@willwade/aac-processors/browser').AACButton) => void;
   /** Callback when page changes */
   onPageChange?: (pageId: string) => void;
   /** Custom CSS class name */
@@ -62,7 +62,7 @@ export interface BoardViewerProps {
  * Result from loading an AAC file
  */
 export interface LoadAACFileResult {
-  tree: import('@willwade/aac-processors').AACTree;
+  tree: import('@willwade/aac-processors/browser').AACTree;
   format: string;
   metadata?: {
     [key: string]: unknown;
