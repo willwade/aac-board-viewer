@@ -8,12 +8,12 @@
  * Node.js: Supports all formats including .sps, .spb, .ce (Node-only processors)
  */
 
-import type { AACTree } from '@willwade/aac-processors/browser';
+import type { AACTree } from '@willwade/aac-processors';
 import type { LoadAACFileResult } from '../types';
 
 type ProcessorOptions = Record<string, unknown> | undefined;
 
-type ProcessorModule = typeof import('@willwade/aac-processors/browser');
+type ProcessorModule = typeof import('@willwade/aac-processors');
 
 // Node-only file extensions that require server-side processing
 const NODE_ONLY_EXTENSIONS = ['.sps', '.spb', '.ce'];
@@ -32,7 +32,7 @@ function isBrowserEnvironment(): boolean {
  * Lazily load processors so browser bundles avoid pulling in Node APIs
  */
 async function importProcessors(): Promise<ProcessorModule> {
-  return import('@willwade/aac-processors/browser');
+  return import('@willwade/aac-processors');
 }
 
 /**
@@ -76,9 +76,7 @@ async function getProcessorForFile(
         `Browser supports: ${BROWSER_EXTENSIONS.join(', ')}`
       );
     }
-    // In Node.js, import from the main package for full processor support
-    const nodeProcessors = await import('@willwade/aac-processors');
-    const { SnapProcessor } = nodeProcessors;
+    const { SnapProcessor } = await importProcessors();
     return {
       processor: options ? new SnapProcessor(null, options) : new SnapProcessor(),
       extension,

@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { loadAACFile, loadAACFileFromURL, calculateMetrics } from '../utils/loaders';
-import type { AACTree } from '@willwade/aac-processors/browser';
+import type { AACTree } from '@willwade/aac-processors';
 import type { ButtonMetric, MetricsOptions } from '../types';
 
 /**
