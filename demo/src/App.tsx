@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { AACTree } from 'aac-board-viewer';
 import {
   BoardViewer,
@@ -26,9 +26,14 @@ function App() {
   } | null>(null);
 
   // Use the browser-based hook for loading
-  const { tree, loading, error: hookError } = useAACFileFromFile(file, {
-    enabled: !useServer, // Only use hook when not in server mode
-  });
+  const hookOptions = useMemo(
+    () => ({
+      enabled: !useServer, // Only use hook when not in server mode
+    }),
+    [useServer]
+  );
+
+  const { tree, loading, error: hookError } = useAACFileFromFile(file, hookOptions);
 
   // Sync errors
   React.useEffect(() => {

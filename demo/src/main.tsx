@@ -1,32 +1,65 @@
 // Polyfill Buffer for browser environment (required by @willwade/aac-processors)
 if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefined') {
-  (window as any).Buffer = {
-    from: (data: any) => {
-      if (typeof data === 'string') {
+  class BufferWrapper extends Uint8Array {
+    constructor(data: any, byteOffset?: number, length?: number) {
+      if (typeof data === 'number') {
+        super(data);
+      } else if (Array.isArray(data)) {
+        super(data);
+      } else if (data instanceof ArrayBuffer) {
+        super(data, byteOffset || 0, length);
+      } else if (data instanceof Uint8Array) {
+        super(data.buffer as ArrayBuffer, data.byteOffset, data.length);
+      } else if (typeof data === 'string') {
         const encoder = new TextEncoder();
-        return encoder.encode(data);
+        super(encoder.encode(data));
+      } else {
+        super(0);
       }
-      if (data instanceof ArrayBuffer) {
-        return new Uint8Array(data);
+    }
+
+    toString(encoding: string = 'utf8'): string {
+      if (encoding === 'utf8' || encoding === 'utf-8') {
+        const decoder = new TextDecoder('utf-8');
+        return decoder.decode(this);
       }
-      if (data instanceof Uint8Array) {
-        return data;
-      }
-      return new Uint8Array(data);
-    },
-    alloc: (size: number) => new Uint8Array(size),
-    allocUnsafe: (size: number) => new Uint8Array(size),
-    concat: (list: Uint8Array[], totalLength?: number) => {
+      throw new Error(`Buffer.toString: encoding ${encoding} not supported`);
+    }
+
+    static from(data: ArrayLike<number> | Iterable<number>): BufferWrapper;
+    static from<T>(
+      data: ArrayLike<T> | Iterable<T>,
+      mapfn?: (v: T, k: number) => number,
+      thisArg?: any
+    ): BufferWrapper;
+    static from(data: any, mapfn?: ((v: any, k: number) => number) | undefined, thisArg?: any): BufferWrapper {
+      return new BufferWrapper(data);
+    }
+
+    static alloc(size: number): BufferWrapper {
+      return new BufferWrapper(size);
+    }
+
+    static allocUnsafe(size: number): BufferWrapper {
+      return new BufferWrapper(size);
+    }
+
+    static concat(list: Uint8Array[], totalLength?: number): BufferWrapper {
       const result = new Uint8Array(totalLength || list.reduce((sum, arr) => sum + arr.length, 0));
       let offset = 0;
       for (const arr of list) {
         result.set(arr, offset);
         offset += arr.length;
       }
-      return result;
-    },
-    isBuffer: (obj: any) => obj instanceof Uint8Array,
-  };
+      return new BufferWrapper(result.buffer, result.byteOffset, result.length);
+    }
+
+    static isBuffer(obj: any): boolean {
+      return obj instanceof BufferWrapper;
+    }
+  }
+
+  (window as any).Buffer = BufferWrapper as any;
 }
 
 import React from 'react';

@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BoardViewer, useAACFileFromFile, getSupportedFormats, isBrowserCompatible } from 'aac-board-viewer';
 import 'aac-board-viewer/styles';
 import { FileUploader } from './FileUploader';
@@ -10,9 +10,10 @@ function App() {
     const [useServer, setUseServer] = useState(false);
     const [serverData, setServerData] = useState(null);
     // Use the browser-based hook for loading
-    const { tree, loading, error: hookError } = useAACFileFromFile(file, {
+    const hookOptions = useMemo(() => ({
         enabled: !useServer, // Only use hook when not in server mode
-    });
+    }), [useServer]);
+    const { tree, loading, error: hookError } = useAACFileFromFile(file, hookOptions);
     // Sync errors
     React.useEffect(() => {
         if (hookError) {
