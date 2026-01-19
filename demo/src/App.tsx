@@ -17,6 +17,7 @@ function App() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [useServer, setUseServer] = useState(false);
+  const [serverLoading, setServerLoading] = useState(false);
   const [serverData, setServerData] = useState<{
     tree: AACTree;
     format: string;
@@ -63,8 +64,21 @@ function App() {
     // Otherwise, the hook will handle it in browser
   };
 
+  React.useEffect(() => {
+    if (!file) {
+      return;
+    }
+    if (useServer) {
+      setError(null);
+      void loadWithServer(file);
+    } else {
+      setServerData(null);
+    }
+  }, [useServer, file]);
+
   const loadWithServer = async (file: File) => {
     try {
+      setServerLoading(true);
       const response = await fetch('/api/load', {
         method: 'POST',
         headers: {
@@ -90,6 +104,8 @@ function App() {
         `Server error: ${err instanceof Error ? err.message : 'Unknown error'}\n\n` +
         'The server could not process this file.'
       );
+    } finally {
+      setServerLoading(false);
     }
   };
 
@@ -104,6 +120,8 @@ function App() {
   const isServerOnlyFormat = ext ? !isBrowserCompatible(ext) : false;
 
   const pageOptions = currentTree ? Object.values(currentTree.pages) : [];
+
+  const isLoading = useServer ? serverLoading : loading;
 
   return (
     <div className="app">
@@ -147,7 +165,7 @@ function App() {
       <main className="app-main">
         <FileUploader onFileLoaded={handleFileLoad} loading={loading} />
 
-        {loading && (
+        {isLoading && (
           <div className="loading">
             <div className="spinner"></div>
             <p>Loading board...</p>
@@ -171,7 +189,7 @@ function App() {
           </div>
         )}
 
-        {!loading && !error && currentTree && (
+        {!isLoading && !error && currentTree && (
           <>
             <div className="board-meta">
               <div>
@@ -249,7 +267,7 @@ function App() {
           </>
         )}
 
-        {!loading && !error && !currentTree && (
+        {!isLoading && !error && !currentTree && (
           <div className="info">
             <h2>Welcome to AAC Board Viewer! 🎉</h2>
             <p>
