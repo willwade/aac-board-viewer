@@ -302,8 +302,12 @@ export async function loadAACFileWithMetadata(
   input: string | File | Blob,
   options?: ProcessorOptions
 ): Promise<LoadAACFileResult> {
-  // Call loadAACFile with type assertion to handle the union type
-  const tree = await loadAACFile(input, options);
+  let tree: AACTree;
+  if (typeof input === 'string') {
+    tree = await loadAACFile(input, options);
+  } else {
+    tree = await loadAACFile(input, options);
+  }
 
   // Detect format from file extension
   let filepath = '';
