@@ -112,7 +112,7 @@ function App() {
         <p>
           Universal AAC board viewer - Now with browser-based loading!
           <span style={{ marginLeft: '0.5rem', fontSize: '0.85em', color: '#6b7280' }}>
-            Powered by AACProcessors v0.1.0
+            Powered by AACProcessors v0.1.6
           </span>
         </p>
 
@@ -254,7 +254,8 @@ function App() {
             <h2>Welcome to AAC Board Viewer! 🎉</h2>
             <p>
               <strong>NEW:</strong> Browser-based loading for most formats! Files are processed directly in your browser
-              using AACProcessors v0.1.0. No server needed for common formats like .obf, .obz, .gridset, .plist, .grd, .opml, and .dot.
+              using AACProcessors v0.1.6. No server needed for common formats like .obf, .obz, .gridset, .plist, .grd, .opml, and .dot.
+              SQLite-backed formats (.sps, .spb, .ce) work in browser once SQL.js is configured.
             </p>
             <div className="info-sections">
               <div className="info-card">
@@ -297,7 +298,12 @@ function App() {
               <div className="info-card">
                 <h3>🚀 Usage</h3>
                 <pre><code>{`// Browser-based loading
-import { useAACFileFromFile } from 'aac-board-viewer';
+import { configureBrowserSqlJs, useAACFileFromFile } from 'aac-board-viewer';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
+
+configureBrowserSqlJs({
+  locateFile: () => sqlWasmUrl,
+});
 
 function MyViewer() {
   const [file, setFile] = useState<File | null>(null);
@@ -334,7 +340,7 @@ const tree = await loadAACFile('/path/to/file.sps');`}</code></pre>
           </a>
           {' · '}
           <span style={{ color: '#6b7280', fontSize: '0.9em' }}>
-            AACProcessors v0.1.0+ for browser support
+            AACProcessors v0.1.6+ for browser support
           </span>
         </p>
       </footer>

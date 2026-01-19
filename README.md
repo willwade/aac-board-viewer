@@ -14,6 +14,8 @@ Universal AAC (Augmentative and Alternative Communication) board viewer componen
 - **Excel** (`.xlsx` boards)
 - **DOT files** (`.dot` visualizations)
 
+Note: In-browser loading of SQLite-backed formats (`.sps`, `.spb`, `.ce`) requires SQL.js configuration.
+
 ## Features
 
 - 🎯 **Universal Support** - Works with all major AAC file formats
@@ -40,9 +42,36 @@ yarn add aac-board-viewer
 
 ## Quick Start
 
-### Server-Side / API Usage
+### Browser Usage
 
-> Important: `@willwade/aac-processors` is a Node-only dependency (uses native modules like `better-sqlite3`). File parsing must happen server-side. For client apps, call an API that returns the parsed tree and pass that to `BoardViewer`.
+SQLite-backed formats (Snap `.sps`/`.spb` and TouchChat `.ce`) require SQL.js to be configured in your bundler before loading files:
+
+```tsx
+import { configureBrowserSqlJs, loadAACFile, BoardViewer } from 'aac-board-viewer';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
+import 'aac-board-viewer/styles';
+
+configureBrowserSqlJs({
+  locateFile: () => sqlWasmUrl,
+});
+
+function MyViewer({ file }: { file: File }) {
+  const [tree, setTree] = useState(null);
+
+  useEffect(() => {
+    async function load() {
+      const loadedTree = await loadAACFile(file);
+      setTree(loadedTree);
+    }
+    load();
+  }, [file]);
+
+  if (!tree) return <div>Loading...</div>;
+  return <BoardViewer tree={tree} />;
+}
+```
+
+### Server-Side / API Usage
 
 ```tsx
 import { BoardViewer } from 'aac-board-viewer';
@@ -57,6 +86,44 @@ function MyViewer({ treeData }) {
       showEffortBadges={true}
     />
   );
+}
+```
+
+### Client/Server Split (Lightweight Frontend)
+
+Parse boards on the server and send the `AACTree` JSON to the browser for rendering. This keeps the frontend lightweight while the backend handles heavy formats.
+
+Server (Node/Express):
+
+```ts
+import express from 'express';
+import { loadAACFile } from 'aac-board-viewer';
+
+const app = express();
+
+app.get('/api/boards/:id', async (req, res) => {
+  const tree = await loadAACFile(`/data/boards/${req.params.id}.sps`);
+  res.json(tree);
+});
+```
+
+Client (React):
+
+```tsx
+import { BoardViewer } from 'aac-board-viewer';
+import 'aac-board-viewer/styles';
+
+function RemoteBoard({ id }: { id: string }) {
+  const [tree, setTree] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/boards/${id}`)
+      .then((res) => res.json())
+      .then(setTree);
+  }, [id]);
+
+  if (!tree) return <div>Loading...</div>;
+  return <BoardViewer tree={tree} />;
 }
 ```
 

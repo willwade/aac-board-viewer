@@ -24,8 +24,11 @@ export default [
     rules: {
       ...tseslint.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
+      'no-undef': 'off',
+      'no-redeclare': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-redeclare': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn'
     }

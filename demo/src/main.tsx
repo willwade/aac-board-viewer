@@ -64,8 +64,14 @@ if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefine
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { configureBrowserSqlJs } from 'aac-board-viewer';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import './index.css';
 import App from './App';
+
+void configureBrowserSqlJs({
+  locateFile: () => sqlWasmUrl,
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

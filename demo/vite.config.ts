@@ -8,7 +8,6 @@ export default defineConfig({
   resolve: {
     conditions: ['browser'],
     alias: {
-      '@willwade/aac-processors': '@willwade/aac-processors/browser',
       // Polyfills for xml2js
       stream: path.resolve(__dirname, 'node_modules/stream-browserify'),
       events: path.resolve(__dirname, 'node_modules/events'),

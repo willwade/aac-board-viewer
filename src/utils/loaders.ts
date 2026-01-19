@@ -4,22 +4,44 @@
  * Provides utilities for loading AAC files from various sources
  * (File/Blob objects, file paths, URLs) in both browser and server contexts.
  *
- * Browser: Supports .obf, .obz, .gridset, .plist, .grd, .opml, .dot
- * Node.js: Supports all formats including .sps, .spb, .ce (Node-only processors)
+ * Browser: Supports all formats. SQLite-backed formats (.sps, .spb, .ce) require SQL.js configuration.
+ * Node.js: Supports all formats including filesystem access and SQLite-backed formats.
  */
 
 import type { AACTree } from '@willwade/aac-processors';
 import type { LoadAACFileResult } from '../types';
 
 type ProcessorOptions = Record<string, unknown> | undefined;
+type ProcessorInput = string | ArrayBuffer | Uint8Array;
+type ProcessorInstance = {
+  loadIntoTree: (input: ProcessorInput) => Promise<AACTree>;
+};
 
 type ProcessorModule = typeof import('@willwade/aac-processors');
+type BrowserProcessorModule = typeof import('@willwade/aac-processors/browser');
+type AnyProcessorModule = ProcessorModule | BrowserProcessorModule;
+
+type SqlJsConfig = {
+  locateFile: (file: string) => string;
+  [key: string]: unknown;
+};
 
 // Node-only file extensions that require server-side processing
-const NODE_ONLY_EXTENSIONS = ['.sps', '.spb', '.ce'];
+const NODE_ONLY_EXTENSIONS = ['.xlsx', '.xls'];
 
-// Browser-compatible file extensions
-const BROWSER_EXTENSIONS = ['.obf', '.obz', '.gridset', '.plist', '.grd', '.opml', '.dot'];
+// Browser-compatible file extensions (SQLite-backed formats require SQL.js configuration)
+const BROWSER_EXTENSIONS = [
+  '.obf',
+  '.obz',
+  '.gridset',
+  '.plist',
+  '.grd',
+  '.opml',
+  '.dot',
+  '.sps',
+  '.spb',
+  '.ce',
+];
 
 /**
  * Detect if running in browser environment
@@ -31,8 +53,27 @@ function isBrowserEnvironment(): boolean {
 /**
  * Lazily load processors so browser bundles avoid pulling in Node APIs
  */
-async function importProcessors(): Promise<ProcessorModule> {
+async function importProcessors(): Promise<AnyProcessorModule> {
+  if (isBrowserEnvironment()) {
+    return import('@willwade/aac-processors/browser');
+  }
   return import('@willwade/aac-processors');
+}
+
+/**
+ * Configure SQL.js for browser-only SQLite-backed formats (.sps/.spb/.ce).
+ */
+export async function configureBrowserSqlJs(config: SqlJsConfig): Promise<void> {
+  if (!isBrowserEnvironment()) {
+    throw new Error('configureBrowserSqlJs can only be used in a browser environment.');
+  }
+
+  const processors = await import('@willwade/aac-processors/browser');
+  if (typeof processors.configureSqlJs !== 'function') {
+    throw new Error('configureSqlJs is not available in this build of @willwade/aac-processors.');
+  }
+
+  processors.configureSqlJs(config);
 }
 
 /**
@@ -41,7 +82,7 @@ async function importProcessors(): Promise<ProcessorModule> {
 async function getProcessorForFile(
   filepath: string,
   options?: ProcessorOptions
-): Promise<{ processor: any; extension: string }> {
+): Promise<{ processor: ProcessorInstance; extension: string }> {
   const { getProcessor } = await importProcessors();
 
   const ext = filepath.toLowerCase().split('.').pop();
@@ -61,24 +102,17 @@ async function getProcessorForFile(
   }
 
   // Use the factory function from v0.1.0
-  const processor = getProcessor(extension);
+  const processor = getProcessor(extension) as ProcessorInstance | undefined;
 
   if (!processor) {
     throw new Error(`Unsupported file type: ${extension}`);
   }
 
-  // For SNAP processor, it needs special options and is Node-only
+  // For SNAP processor, it needs special options
   if (extension === '.sps' || extension === '.spb') {
-    if (isBrowserEnvironment()) {
-      throw new Error(
-        `SNAP files (.sps, .spb) require server-side processing. ` +
-        `Please use the server API or upload a browser-compatible format. ` +
-        `Browser supports: ${BROWSER_EXTENSIONS.join(', ')}`
-      );
-    }
     const { SnapProcessor } = await importProcessors();
     return {
-      processor: options ? new SnapProcessor(null, options) : new SnapProcessor(),
+      processor: (options ? new SnapProcessor(null, options) : new SnapProcessor()) as ProcessorInstance,
       extension,
     };
   }
@@ -269,7 +303,7 @@ export async function loadAACFileWithMetadata(
   options?: ProcessorOptions
 ): Promise<LoadAACFileResult> {
   // Call loadAACFile with type assertion to handle the union type
-  const tree = await loadAACFile(input as any, options);
+  const tree = await loadAACFile(input, options);
 
   // Detect format from file extension
   let filepath = '';
@@ -342,15 +376,24 @@ export async function calculateMetrics(
   } = {}
 ) {
   // Import MetricsCalculator dynamically to avoid circular dependencies
-  const aacProcessors = await import('@willwade/aac-processors');
+  const aacProcessors = await importProcessors();
+  const hasMetricsCalculator =
+    typeof (aacProcessors as { MetricsCalculator?: unknown }).MetricsCalculator === 'function';
 
   // Use the calculator if available, otherwise return empty metrics
-  if (!aacProcessors.MetricsCalculator) {
+  if (!hasMetricsCalculator) {
     console.warn('MetricsCalculator not available in this environment');
     return [];
   }
 
-  const calculator = new aacProcessors.MetricsCalculator();
+  type MetricsCalculator = {
+    analyze: (
+      targetTree: AACTree,
+      metricsOptions: Record<string, unknown>
+    ) => { buttons: MetricsButton[] };
+  };
+  const calculator = new (aacProcessors as { MetricsCalculator: new () => MetricsCalculator })
+    .MetricsCalculator();
 
   let metricsOptions: Record<string, unknown> = {};
 
@@ -430,14 +473,14 @@ export function getSupportedFormats(): Array<{
     {
       name: 'TD Snap',
       extensions: ['.sps', '.spb'],
-      description: 'Tobii Dynavox Snap files',
-      browserCompatible: false,
+      description: 'Tobii Dynavox Snap files (requires SQL.js in browser)',
+      browserCompatible: true,
     },
     {
       name: 'TouchChat',
       extensions: ['.ce'],
-      description: 'Saltillo TouchChat files',
-      browserCompatible: false,
+      description: 'Saltillo TouchChat files (requires SQL.js in browser)',
+      browserCompatible: true,
     },
     {
       name: 'OpenBoard',

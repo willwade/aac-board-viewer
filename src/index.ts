@@ -23,6 +23,7 @@ export {
   loadAACFileFromURL,
   loadAACFileWithMetadata,
   calculateMetrics,
+  configureBrowserSqlJs,
   getSupportedFormats,
   isBrowserCompatible,
   getBrowserExtensions,

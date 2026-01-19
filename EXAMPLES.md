@@ -35,8 +35,13 @@ function MyComponent({ treeData }) {
 ### Client-Side Loading
 
 ```tsx
-import { BoardViewer, useAACFile } from 'aac-board-viewer';
+import { BoardViewer, configureBrowserSqlJs, useAACFile } from 'aac-board-viewer';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import 'aac-board-viewer/styles';
+
+configureBrowserSqlJs({
+  locateFile: () => sqlWasmUrl,
+});
 
 function BoardViewerFromURL({ fileUrl }) {
   const { tree, loading, error } = useAACFile(fileUrl);
