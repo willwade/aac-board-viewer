@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm --prefix .. run build && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@willwade/aac-processors": "^0.1.6",
+    "@willwade/aac-processors": "^0.1.7",
     "aac-board-viewer": "file:..",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
