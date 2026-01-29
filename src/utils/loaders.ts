@@ -53,10 +53,7 @@ function isBrowserEnvironment(): boolean {
  * Lazily load processors so browser bundles avoid pulling in Node APIs
  */
 async function importProcessors(): Promise<AnyProcessorModule> {
-  if (isBrowserEnvironment()) {
-    return import('@willwade/aac-processors');
-  }
-  return import('@willwade/aac-processors/node');
+  return import('@willwade/aac-processors');
 }
 
 /**
