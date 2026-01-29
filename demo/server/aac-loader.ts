@@ -102,16 +102,22 @@ export async function loadAACFromBuffer(
   for (const [pageId, page] of Object.entries(tree.pages)) {
     cleanPages[pageId] = {
       ...page,
-      buttons: page.buttons.map((btn: any) => ({
-        ...btn,
-        // Remove large data URLs from serialization
-        image: btn.image && btn.image.length > 1000 ? undefined : btn.image,
-        resolvedImageEntry: btn.resolvedImageEntry && btn.resolvedImageEntry.length > 1000 ? undefined : btn.resolvedImageEntry,
-        // Also remove large image data from parameters
-        parameters: btn.parameters?.imageData
-          ? { ...btn.parameters, imageData: '[REDACTED]' }
-          : btn.parameters,
-      })),
+      buttons: page.buttons.map((btn: any) => {
+        // Debug: log resolvedImageEntry
+        if (btn.resolvedImageEntry) {
+          console.log('[AAC Loader] Button:', btn.label, 'resolvedImageEntry:', btn.resolvedImageEntry);
+        }
+        return {
+          ...btn,
+          // Remove large data URLs from serialization
+          image: btn.image && btn.image.length > 1000 ? undefined : btn.image,
+          resolvedImageEntry: btn.resolvedImageEntry && btn.resolvedImageEntry.length > 1000 ? undefined : btn.resolvedImageEntry,
+          // Also remove large image data from parameters
+          parameters: btn.parameters?.imageData
+            ? { ...btn.parameters, imageData: '[REDACTED]' }
+            : btn.parameters,
+        };
+      }),
     };
   }
 

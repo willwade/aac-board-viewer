@@ -108,6 +108,8 @@ export function BoardViewer({
   className = '',
   loadId,
 }: BoardViewerProps) {
+  console.log('[BoardViewer] COMPONENT LOADED - Running updated code!');
+  console.log('[BoardViewer] loadId:', loadId);
   const resolveInitialPageId = useCallback(() => {
     // Explicit override
     if (initialPageId && tree.pages[initialPageId]) {
@@ -553,6 +555,8 @@ export function BoardViewer({
                       : false) ||
                       (highlight.label && button.label === highlight.label));
 
+                  // Determine the image source
+                  // Note: For Grid3 files with loadId, we'll use apiUrl instead (set below)
                   const imageSrc =
                     (button.resolvedImageEntry && !String(button.resolvedImageEntry).startsWith('[')
                       ? button.resolvedImageEntry
@@ -560,22 +564,37 @@ export function BoardViewer({
                     (button.image && !String(button.image).startsWith('[') ? button.image : null);
 
                   // For OBZ files with loadId, use the image API endpoint
-                  // For Grid3 files, also use API if we have gridPageName and position
+                  // For Grid3 files, also use API if we have resolvedImageEntry
                   const params = button.parameters as {
                     image_id?: string;
                     gridPageName?: string;
                   };
 
                   let apiUrl: string | undefined = undefined;
-                  if (loadId && button.image) {
+                  console.log('[BoardViewer] Button:', button.label, 'loadId:', loadId, 'resolvedImageEntry:', button.resolvedImageEntry);
+                  if (loadId) {
+                    console.log('[BoardViewer] loadId exists, checking image conditions');
                     // OBZ files have large data URLs or image_id
-                    if (button.image.length > 1000 && params.image_id) {
+                    if (button.image && button.image.length > 1000 && params.image_id) {
                       apiUrl = `/api/image/${loadId}/${params.image_id}`;
+                      console.log('[BoardViewer] Using OBZ image_id API:', apiUrl);
                     }
-                    // Grid3 files have gridPageName and x,y coordinates
-                    else if (params.gridPageName && button.x !== undefined && button.y !== undefined) {
-                      apiUrl = `/api/image/${loadId}/${params.gridPageName}/${button.x}-${button.y}`;
+                    // Grid3 files: use resolvedImageEntry if available (contains full path)
+                    else if (button.resolvedImageEntry && !button.resolvedImageEntry.startsWith('[')) {
+                      // Extract just the path after "Grids/" for the API
+                      const entryPath = button.resolvedImageEntry;
+                      const pathMatch = entryPath.match(/^(?:Grids\/)?(.+)$/);
+                      if (pathMatch) {
+                        apiUrl = `/api/image/${loadId}/${pathMatch[1]}`;
+                        console.log('[BoardViewer] Button:', button.label, 'resolvedImageEntry:', entryPath, 'apiUrl:', apiUrl);
+                      } else {
+                        console.log('[BoardViewer] Button:', button.label, 'resolvedImageEntry no match:', entryPath);
+                      }
+                    } else {
+                      console.log('[BoardViewer] loadId exists but no valid image condition');
                     }
+                  } else {
+                    console.log('[BoardViewer] loadId is undefined/null');
                   }
 
                   if (isWorkspace) {

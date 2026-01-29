@@ -99,38 +99,44 @@ async function handleImageRequest(req: IncomingMessage, res: ServerResponse) {
 
     // Check if this is a Grid3 file (.gridset)
     if (filename.toLowerCase().endsWith('.gridset')) {
-      // For Grid3, imageId format can be:
-      // 1. {pageName}/{x}-{y}  (from our new URL format)
-      // 2. {pageId}::{buttonId} (old format, deprecated)
+      // For Grid3, imageId should be the full path from resolvedImageEntry
+      // Format: "Grids/PageName/1-4-0-text-0.png" or "PageName/1-4-0-text-0.png"
 
       // Decode URL encoding (spaces become %20, etc)
       const decodedImageId = decodeURIComponent(imageId);
       console.log('[Image API] Grid3 file, decoded imageId:', decodedImageId);
 
-      // Try to parse as pageName/x-y format first
-      const pathMatch = decodedImageId.match(/^([^/]+)\/(\d+)-(\d+)$/);
-      if (pathMatch) {
-        const [, pageName, x, y] = pathMatch;
-        const imagePath = `Grids/${pageName}/${x}-${y}-0-text-0.png`;
-        console.log('[Image API] Looking for:', imagePath);
-        const imageEntry = zip.getEntry(imagePath);
-        console.log('[Image API] Found entry:', imageEntry ? 'YES' : 'NO');
+      // The imageId from the frontend should be the full path from resolvedImageEntry
+      // Try to get it directly first
+      let imagePath = decodedImageId;
 
-        if (imageEntry) {
-          imageData = imageEntry.getData();
-          contentType = getMimeTypeFromFilename(imagePath);
-          console.log('[Image API] Image data size:', imageData.length);
-        }
+      // If path doesn't start with "Grids/", prepend it
+      if (!imagePath.startsWith('Grids/')) {
+        imagePath = `Grids/${imagePath}`;
+      }
+
+      console.log('[Image API] Looking for:', imagePath);
+      const imageEntry = zip.getEntry(imagePath);
+      console.log('[Image API] Found entry:', imageEntry ? 'YES' : 'NO');
+
+      if (imageEntry) {
+        imageData = imageEntry.getData();
+        contentType = getMimeTypeFromFilename(imagePath);
+        console.log('[Image API] Image data size:', imageData.length);
       } else {
-        // Fall back to trying to find any image (shouldn't happen with new format)
-        const entries = zip.getEntries().filter((e) =>
-          e.entryName.startsWith('Grids/') &&
-          e.entryName.match(/\d+-\d+-0-text-0\.\w+$/)
-        );
-
-        if (entries.length > 0) {
-          imageData = entries[0].getData();
-          contentType = getMimeTypeFromFilename(entries[0].entryName);
+        // Fallback: try the old coordinate-based format for backward compatibility
+        // This handles cases where the URL is in the format "PageName/x-y"
+        const pathMatch = decodedImageId.match(/^([^/]+)\/(\d+)-(\d+)$/);
+        if (pathMatch) {
+          const [, pageName, x, y] = pathMatch;
+          const fallbackPath = `Grids/${pageName}/${x}-${y}-0-text-0.png`;
+          console.log('[Image API] Fallback: trying', fallbackPath);
+          const fallbackEntry = zip.getEntry(fallbackPath);
+          if (fallbackEntry) {
+            imageData = fallbackEntry.getData();
+            contentType = getMimeTypeFromFilename(fallbackPath);
+            console.log('[Image API] Fallback found image');
+          }
         }
       }
     } else {

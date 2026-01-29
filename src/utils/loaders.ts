@@ -394,8 +394,15 @@ export async function calculateMetrics(
       metricsOptions: Record<string, unknown>
     ) => { buttons: MetricsButton[] };
   };
-  const calculator = new (aacProcessors as { MetricsCalculator: new () => MetricsCalculator })
-    .MetricsCalculator();
+  const MetricsCalculatorConstructor = (aacProcessors as { MetricsCalculator?: new () => MetricsCalculator })
+    .MetricsCalculator;
+
+  if (!MetricsCalculatorConstructor) {
+    console.warn('MetricsCalculator constructor not available');
+    return [];
+  }
+
+  const calculator = new MetricsCalculatorConstructor();
 
   let metricsOptions: Record<string, unknown> = {};
 
