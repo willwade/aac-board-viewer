@@ -48,6 +48,13 @@ export interface BoardViewerProps {
   showLinkIndicators?: boolean;
   /** Start the viewer on this page id (overrides tree.rootId) */
   initialPageId?: string;
+  /** Highlight a specific button/location on the current page */
+  highlight?: {
+    pageId: string;
+    x?: number;
+    y?: number;
+    label?: string;
+  };
   /** Callback when a button is clicked */
   onButtonClick?: (button: import('@willwade/aac-processors').AACButton) => void;
   /** Callback when page changes */

@@ -102,6 +102,7 @@ export function BoardViewer({
   showEffortBadges = true,
   showLinkIndicators = true,
   initialPageId,
+  highlight,
   onButtonClick,
   onPageChange,
   className = '',
@@ -148,6 +149,8 @@ export function BoardViewer({
   // Determine which page to show
   const [currentPageId, setCurrentPageId] = useState<string | null>(() => resolveInitialPageId());
 
+  const highlightedButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
   const [pageHistory, setPageHistory] = useState<AACPage[]>([]);
   const [message, setMessage] = useState('');
   const [currentWordCount, setCurrentWordCount] = useState(0);
@@ -190,6 +193,16 @@ export function BoardViewer({
     setCurrentPageId(resolveInitialPageId());
     setPageHistory([]);
   }, [resolveInitialPageId]);
+
+  React.useEffect(() => {
+    if (highlightedButtonRef.current) {
+      highlightedButtonRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'center',
+      });
+    }
+  }, [currentPageId, highlight?.pageId, highlight?.x, highlight?.y, highlight?.label]);
 
   // Calculate total stats for current word
   const updateStats = (word: string, effort: number) => {
@@ -532,6 +545,14 @@ export function BoardViewer({
                     (button.contentSubType || '').toLowerCase() === 'prediction';
                   const isWorkspace = button.contentType === 'Workspace';
 
+                  const isHighlighted =
+                    highlight &&
+                    highlight.pageId === currentPageId &&
+                    ((highlight.x !== undefined && highlight.y !== undefined
+                      ? button.x === highlight.x && button.y === highlight.y
+                      : false) ||
+                      (highlight.label && button.label === highlight.label));
+
                   const imageSrc =
                     (button.resolvedImageEntry && !String(button.resolvedImageEntry).startsWith('[')
                       ? button.resolvedImageEntry
@@ -580,7 +601,12 @@ export function BoardViewer({
                     <button
                       key={button.id}
                       onClick={() => handleButtonClick(button)}
-                      className="relative aspect-square p-2 rounded-lg border-2 transition flex flex-col items-center justify-center gap-1 hover:opacity-80 hover:scale-105 active:scale-95"
+                      ref={isHighlighted ? highlightedButtonRef : undefined}
+                      className={`relative aspect-square p-2 rounded-lg border-2 transition flex flex-col items-center justify-center gap-1 hover:opacity-80 hover:scale-105 active:scale-95 ${
+                        isHighlighted
+                          ? 'ring-4 ring-amber-400 ring-offset-2 ring-offset-white'
+                          : ''
+                      }`}
                       style={{
                         backgroundColor: button.style?.backgroundColor || '#f3f4f6',
                         borderColor: button.style?.borderColor || '#e5e7eb',
