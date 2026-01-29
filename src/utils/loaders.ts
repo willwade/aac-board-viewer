@@ -18,8 +18,7 @@ type ProcessorInstance = {
 };
 
 type ProcessorModule = typeof import('@willwade/aac-processors');
-type BrowserProcessorModule = typeof import('@willwade/aac-processors/browser');
-type AnyProcessorModule = ProcessorModule | BrowserProcessorModule;
+type AnyProcessorModule = ProcessorModule;
 
 type SqlJsConfig = {
   locateFile: (file: string) => string;
@@ -55,9 +54,9 @@ function isBrowserEnvironment(): boolean {
  */
 async function importProcessors(): Promise<AnyProcessorModule> {
   if (isBrowserEnvironment()) {
-    return import('@willwade/aac-processors/browser');
+    return import('@willwade/aac-processors');
   }
-  return import('@willwade/aac-processors');
+  return import('@willwade/aac-processors/node');
 }
 
 /**
@@ -68,7 +67,9 @@ export async function configureBrowserSqlJs(config: SqlJsConfig): Promise<void> 
     throw new Error('configureBrowserSqlJs can only be used in a browser environment.');
   }
 
-  const processors = await import('@willwade/aac-processors/browser');
+  const processors = (await import('@willwade/aac-processors')) as {
+    configureSqlJs?: (cfg: SqlJsConfig) => void;
+  };
   if (typeof processors.configureSqlJs !== 'function') {
     throw new Error('configureSqlJs is not available in this build of @willwade/aac-processors.');
   }
