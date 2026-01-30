@@ -568,45 +568,65 @@ export function BoardViewer({
                       (highlight.label && button.label === highlight.label));
 
                   // Determine the image source
-                  // Note: For Grid3 files with loadId, we'll use apiUrl instead (set below)
-                  const imageSrc =
-                    (button.resolvedImageEntry && !String(button.resolvedImageEntry).startsWith('[')
-                      ? button.resolvedImageEntry
-                      : null) ||
-                    (button.image && !String(button.image).startsWith('[') ? button.image : null);
-
-                  // For OBZ files with loadId, use the image API endpoint
-                  // For Grid3 files, also use API if we have resolvedImageEntry
+                  // Priority: data URLs (used directly) > file paths (via API for Grid3/OBZ)
                   const params = button.parameters as {
                     image_id?: string;
                     gridPageName?: string;
+                    imageData?: Buffer;
                   };
 
+                  let imageSrc: string | null = null;
                   let apiUrl: string | undefined = undefined;
-                  console.log('[BoardViewer] Button:', button.label, 'loadId:', loadId, 'resolvedImageEntry:', button.resolvedImageEntry);
-                  if (loadId) {
-                    console.log('[BoardViewer] loadId exists, checking image conditions');
-                    // OBZ files have large data URLs or image_id
-                    if (button.image && button.image.length > 1000 && params.image_id) {
-                      apiUrl = `/api/image/${loadId}/${params.image_id}`;
-                      console.log('[BoardViewer] Using OBZ image_id API:', apiUrl);
-                    }
-                    // Grid3 files: use resolvedImageEntry if available (contains full path)
-                    else if (button.resolvedImageEntry && !button.resolvedImageEntry.startsWith('[')) {
-                      // Extract just the path after "Grids/" for the API
-                      const entryPath = button.resolvedImageEntry;
+
+                  // IMPORTANT: Only use string values, never Buffers or objects
+                  // Buffers don't serialize correctly across server/client boundary in SSR
+
+                  // First, check if we have a data URL (Snap files, OBZ, etc.)
+                  // NOTE: Check button.resolvedImageEntry first as it's the canonical source
+                  const resolvedEntry = button.resolvedImageEntry;
+                  const buttonImage = button.image;
+
+                  // Safely check resolvedImageEntry - must be a string
+                  if (resolvedEntry && typeof resolvedEntry === 'string' && resolvedEntry.startsWith('data:image/')) {
+                    // Snap files: resolvedImageEntry is a data URL string
+                    imageSrc = resolvedEntry;
+                  }
+                  // Safely check button.image - must be a string
+                  else if (buttonImage && typeof buttonImage === 'string' && buttonImage.startsWith('data:image/')) {
+                    // Fallback to button.image if it's a data URL string
+                    imageSrc = buttonImage;
+                  }
+                  // Grid3 file path (not a data URL, not a symbol reference)
+                  else if (
+                    resolvedEntry &&
+                    typeof resolvedEntry === 'string' &&
+                    !resolvedEntry.startsWith('[') &&
+                    !resolvedEntry.startsWith('data:image/')
+                  ) {
+                    // Grid3 files: use API endpoint for file paths
+                    if (loadId) {
+                      const entryPath = resolvedEntry;
                       const pathMatch = entryPath.match(/^(?:Grids\/)?(.+)$/);
                       if (pathMatch) {
-                        apiUrl = `/api/image/${loadId}/${pathMatch[1]}`;
-                        console.log('[BoardViewer] Button:', button.label, 'resolvedImageEntry:', entryPath, 'apiUrl:', apiUrl);
-                      } else {
-                        console.log('[BoardViewer] Button:', button.label, 'resolvedImageEntry no match:', entryPath);
+                        apiUrl = `/api/image/${loadId}/${encodeURIComponent(pathMatch[1])}`;
                       }
                     } else {
-                      console.log('[BoardViewer] loadId exists but no valid image condition');
+                      imageSrc = resolvedEntry;
                     }
-                  } else {
-                    console.log('[BoardViewer] loadId is undefined/null');
+                  }
+                  // Fallback to button.image if it's a string (not a symbol reference)
+                  else if (
+                    buttonImage &&
+                    typeof buttonImage === 'string' &&
+                    !buttonImage.startsWith('[')
+                  ) {
+                    imageSrc = buttonImage;
+                  }
+
+                  // For OBZ files with loadId and image_id, use API (but not if we already have a data URL)
+                  // Note: We check buttonImage.length > 1000 but we're NOT using the Buffer imageData
+                  if (loadId && !imageSrc && !apiUrl && params.image_id && typeof params.image_id === 'string') {
+                    apiUrl = `/api/image/${loadId}/${encodeURIComponent(params.image_id)}`;
                   }
 
                   if (isWorkspace) {
@@ -672,9 +692,13 @@ export function BoardViewer({
                       {/* Image */}
                       {(imageSrc || apiUrl) && (
                         <img
-                          src={(apiUrl || imageSrc) ?? undefined}
+                          src={imageSrc || apiUrl}
                           alt={button.label}
                           className="max-h-12 object-contain"
+                          onError={(e) => {
+                            console.warn('Image failed to load:', button.label, 'src:', (e.target as HTMLImageElement).src);
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
                         />
                       )}
 

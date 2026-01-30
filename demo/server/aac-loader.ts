@@ -96,26 +96,19 @@ export async function loadAACFromBuffer(
   // so JSON.stringify would drop them. Build a plain object so the client
   // receives the correct home page information.
   //
-  // Also need to strip out image data URLs to avoid hitting string size limits
-  // for large boards with many images.
+  // NOTE: We do NOT strip data URLs because they are required for formats like Snap
+  // that embed images directly as data URLs. The board-viewer component handles
+  // data URLs efficiently by using them directly without API calls.
   const cleanPages: Record<string, any> = {};
   for (const [pageId, page] of Object.entries(tree.pages)) {
     cleanPages[pageId] = {
       ...page,
       buttons: page.buttons.map((btn: any) => {
-        // Debug: log resolvedImageEntry
-        if (btn.resolvedImageEntry) {
-          console.log('[AAC Loader] Button:', btn.label, 'resolvedImageEntry:', btn.resolvedImageEntry);
-        }
         return {
           ...btn,
-          // Remove large data URLs from serialization
-          image: btn.image && btn.image.length > 1000 ? undefined : btn.image,
-          resolvedImageEntry: btn.resolvedImageEntry && btn.resolvedImageEntry.length > 1000 ? undefined : btn.resolvedImageEntry,
-          // Also remove large image data from parameters
-          parameters: btn.parameters?.imageData
-            ? { ...btn.parameters, imageData: '[REDACTED]' }
-            : btn.parameters,
+          // Keep data URLs intact - they're needed for Snap and other formats
+          image: btn.image,
+          resolvedImageEntry: btn.resolvedImageEntry,
         };
       }),
     };

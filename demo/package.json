@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@willwade/aac-processors": "^0.1.13",
+    "@willwade/aac-processors": "^0.1.17",
     "aac-board-viewer": "file:..",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
