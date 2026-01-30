@@ -1,6 +1,6 @@
 {
   "name": "aac-board-viewer",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Universal AAC board viewer component for React. Supports GridSet, TouchChat, SNAP, OpenBoard, Asterics, Apple Panels, and more.",
   "keywords": [
     "aac",
@@ -59,7 +59,7 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "dependencies": {
-    "@willwade/aac-processors": "^0.1.17"
+    "@willwade/aac-processors": "^0.1.18"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

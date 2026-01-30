@@ -625,7 +625,7 @@ export function BoardViewer({
 
                   // For OBZ files with loadId and image_id, use API (but not if we already have a data URL)
                   // Note: We check buttonImage.length > 1000 but we're NOT using the Buffer imageData
-                  if (loadId && !imageSrc && !apiUrl && params.image_id && typeof params.image_id === 'string') {
+                  if (loadId && !imageSrc && !apiUrl && params && params.image_id && typeof params.image_id === 'string') {
                     apiUrl = `/api/image/${loadId}/${encodeURIComponent(params.image_id)}`;
                   }
 

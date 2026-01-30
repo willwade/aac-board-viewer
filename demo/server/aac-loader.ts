@@ -104,12 +104,45 @@ export async function loadAACFromBuffer(
     cleanPages[pageId] = {
       ...page,
       buttons: page.buttons.map((btn: any) => {
-        return {
-          ...btn,
-          // Keep data URLs intact - they're needed for Snap and other formats
+        // Explicitly copy only the properties we need, avoiding any hidden/non-serializable ones
+        const cleanButton: any = {
+          id: btn.id,
+          label: btn.label,
+          message: btn.message,
+          x: btn.x,
+          y: btn.y,
+          rowSpan: btn.rowSpan,
+          colSpan: btn.colSpan,
+          style: btn.style,
+          targetPageId: btn.targetPageId,
+          semanticAction: btn.semanticAction,
+          semanticCategory: btn.semanticCategory,
+          semanticIntent: btn.semanticIntent,
           image: btn.image,
           resolvedImageEntry: btn.resolvedImageEntry,
+          parameters: btn.parameters,
         };
+
+        // DEBUG: Log button with data URL
+        if (btn.image && btn.image.startsWith && btn.image.startsWith('data:image')) {
+          console.log('[Server Loader] Button with data URL:', btn.label);
+          console.log('  image type:', typeof btn.image);
+          console.log('  image[0:60]:', btn.image.substring(0, 60));
+        }
+
+        // Check for any Buffer properties that would corrupt on JSON.stringify
+        if (cleanButton.parameters) {
+          const hasBuffer = Object.entries(cleanButton.parameters).some(
+            ([key, val]) => Buffer.isBuffer(val) || (val && val.constructor && val.constructor.name === 'Buffer')
+          );
+          if (hasBuffer) {
+            console.error('[Server Loader] ❌ Button has Buffer in parameters:', btn.label);
+            console.error('  Removing parameters to prevent corruption');
+            delete cleanButton.parameters;
+          }
+        }
+
+        return cleanButton;
       }),
     };
   }
