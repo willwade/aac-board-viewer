@@ -48,9 +48,12 @@ export interface BoardViewerProps {
   showLinkIndicators?: boolean;
   /** Start the viewer on this page id (overrides tree.rootId) */
   initialPageId?: string;
+  /** Navigate to this page id when provided (optional, keeps internal navigation) */
+  navigateToPageId?: string;
   /** Highlight a specific button/location on the current page */
   highlight?: {
     pageId: string;
+    buttonId?: string;
     x?: number;
     y?: number;
     label?: string;

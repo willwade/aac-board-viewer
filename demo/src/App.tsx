@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { AACTree } from 'aac-board-viewer';
+import type { AACTree, AACPage, AACButton } from 'aac-board-viewer';
 import {
   BoardViewer,
   useAACFileFromFile,
@@ -13,6 +13,115 @@ import { FileUploader } from './FileUploader';
 import './App.css';
 import type { ValidationResult, ValidationCheck } from '@willwade/aac-processors/validation';
 
+type SearchResult = {
+  button: AACButton;
+  page: AACPage;
+  pagePath: string;
+  searchText: string;
+};
+
+function resolveDefaultRootId(tree: AACTree): string | null {
+  if (tree.rootId && tree.pages[tree.rootId]) {
+    const rootPage = tree.pages[tree.rootId];
+    const isToolbar =
+      rootPage.name.toLowerCase().includes('toolbar') ||
+      rootPage.name.toLowerCase().includes('tool bar');
+    if (!isToolbar) {
+      return tree.rootId;
+    }
+  }
+
+  const startPage = Object.values(tree.pages).find(
+    (p) => p.name.toLowerCase() === 'start'
+  );
+  if (startPage) {
+    return startPage.id;
+  }
+
+  const nonToolbarPage = Object.values(tree.pages).find(
+    (p) => !p.name.toLowerCase().includes('toolbar') && !p.name.toLowerCase().includes('tool bar')
+  );
+  if (nonToolbarPage) {
+    return nonToolbarPage.id;
+  }
+
+  const pageIds = Object.keys(tree.pages);
+  return pageIds.length > 0 ? pageIds[0] : null;
+}
+
+function getPageButtons(page: AACPage): AACButton[] {
+  if (page.buttons && page.buttons.length > 0) {
+    return page.buttons;
+  }
+
+  const seen = new Set<string>();
+  const buttons: AACButton[] = [];
+  page.grid.forEach((row) => {
+    row.forEach((button) => {
+      if (!button) return;
+      if (seen.has(button.id)) return;
+      seen.add(button.id);
+      buttons.push(button);
+    });
+  });
+
+  return buttons;
+}
+
+function buildPagePathMap(tree: AACTree): Map<string, string[]> {
+  const pathMap = new Map<string, string[]>();
+  const rootId = resolveDefaultRootId(tree);
+  const visited = new Set<string>();
+  const parent = new Map<string, string | null>();
+  const queue: string[] = [];
+
+  if (rootId) {
+    queue.push(rootId);
+    parent.set(rootId, null);
+  }
+
+  while (queue.length > 0) {
+    const pageId = queue.shift();
+    if (!pageId || visited.has(pageId)) continue;
+    visited.add(pageId);
+
+    const page = tree.pages[pageId];
+    if (!page) continue;
+
+    const buttons = getPageButtons(page);
+    buttons.forEach((button) => {
+      const targetPageId = button.targetPageId || button.semanticAction?.targetId;
+      if (targetPageId && tree.pages[targetPageId] && !parent.has(targetPageId)) {
+        parent.set(targetPageId, pageId);
+        queue.push(targetPageId);
+      }
+    });
+  }
+
+  Object.values(tree.pages).forEach((page) => {
+    const pathNames: string[] = [];
+    let cursor: string | null | undefined = page.id;
+    const guard = new Set<string>();
+
+    while (cursor && parent.has(cursor) && !guard.has(cursor)) {
+      guard.add(cursor);
+      const pageAtCursor = tree.pages[cursor];
+      if (pageAtCursor) {
+        pathNames.unshift(pageAtCursor.name || cursor);
+      }
+      cursor = parent.get(cursor) ?? null;
+    }
+
+    if (pathNames.length === 0) {
+      pathNames.push(page.name || page.id);
+    }
+
+    pathMap.set(page.id, pathNames);
+  });
+
+  return pathMap;
+}
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +134,10 @@ function App() {
     loadId: string;
     validation?: ValidationResult;
   } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [navigateToPageId, setNavigateToPageId] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<{ pageId: string; buttonId?: string; x?: number; y?: number; label?: string } | null>(null);
 
   // Use the browser-based hook for loading
   const hookOptions = useMemo(
@@ -123,6 +236,63 @@ function App() {
 
   const isLoading = useServer ? serverLoading : loading;
 
+  const pagePathMap = useMemo(() => {
+    if (!currentTree) {
+      return new Map<string, string[]>();
+    }
+    return buildPagePathMap(currentTree);
+  }, [currentTree]);
+
+  const searchIndex = useMemo<SearchResult[]>(() => {
+    if (!currentTree) return [];
+
+    const results: SearchResult[] = [];
+    Object.values(currentTree.pages).forEach((page) => {
+      const pagePathParts = pagePathMap.get(page.id) ?? [page.name || page.id];
+      const buttons = getPageButtons(page);
+      buttons.forEach((button) => {
+        const label = button.label || '';
+        const message = button.message || '';
+        const searchText = `${label} ${message}`.trim();
+        if (!searchText) return;
+        results.push({
+          button,
+          page,
+          pagePath: `${pagePathParts.join(' -> ')} -> ${label || message || button.id}`,
+          searchText: searchText.toLowerCase(),
+        });
+      });
+    });
+
+    return results;
+  }, [currentTree, pagePathMap]);
+
+  const filteredResults = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return searchIndex
+      .filter((result) => result.searchText.includes(query))
+      .slice(0, 50);
+  }, [searchIndex, searchQuery]);
+
+  React.useEffect(() => {
+    if (!navigateToPageId) return;
+    const handle = window.setTimeout(() => setNavigateToPageId(null), 0);
+    return () => window.clearTimeout(handle);
+  }, [navigateToPageId]);
+
+  const handleSearchSelect = (result: SearchResult) => {
+    setIsSearchOpen(false);
+    setNavigateToPageId(result.page.id);
+    setHighlight({
+      pageId: result.page.id,
+      buttonId: result.button.id,
+      x: result.button.x,
+      y: result.button.y,
+      label: result.button.label,
+    });
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -159,6 +329,31 @@ function App() {
             />
             Force server mode
           </label>
+          {currentTree && (
+            <div className="search-box">
+              <input
+                type="search"
+                placeholder="Search for a button…"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchOpen(Boolean(e.target.value.trim()));
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim()) {
+                    setIsSearchOpen(true);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen((prev) => !prev)}
+                disabled={!searchQuery.trim()}
+              >
+                {isSearchOpen ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -241,6 +436,8 @@ function App() {
             <div className="board-container">
               <BoardViewer
                 tree={currentTree}
+                highlight={highlight ?? undefined}
+                navigateToPageId={navigateToPageId ?? undefined}
                 loadId={currentLoadId}
               />
             </div>
@@ -362,6 +559,47 @@ const tree = await loadAACFile('/path/to/file.sps');`}</code></pre>
           </span>
         </p>
       </footer>
+
+      {isSearchOpen && (
+        <div
+          className="search-modal-backdrop"
+          onClick={() => setIsSearchOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="search-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search results"
+          >
+            <div className="search-modal-header">
+              <div>
+                <strong>Search results</strong>
+                <div className="search-modal-subtitle">
+                  {filteredResults.length} result{filteredResults.length === 1 ? '' : 's'} for &quot;{searchQuery}&quot;
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsSearchOpen(false)}>
+                Close
+              </button>
+            </div>
+            {filteredResults.length === 0 ? (
+              <div className="search-empty">No matches found.</div>
+            ) : (
+              <ul className="search-results">
+                {filteredResults.map((result) => (
+                  <li key={`${result.page.id}-${result.button.id}`}>
+                    <button type="button" onClick={() => handleSearchSelect(result)}>
+                      <span className="search-path">{result.pagePath}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -113,6 +113,39 @@ body {
   border-color: #3b82f6;
 }
 
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  min-width: 220px;
+  font-size: 0.9rem;
+  background: transparent;
+}
+
+.search-box button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.search-box button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
 .file-info {
   color: #6b7280;
   font-size: 0.875rem;
@@ -303,4 +336,86 @@ body {
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.75rem;
   line-height: 1.5;
+}
+
+.search-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4rem 1rem;
+  z-index: 50;
+}
+
+.search-modal {
+  width: min(720px, 100%);
+  max-height: 70vh;
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.search-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.search-modal-header button {
+  border: none;
+  background: transparent;
+  color: #374151;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.search-modal-subtitle {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.search-results {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+  overflow-y: auto;
+}
+
+.search-results li + li {
+  border-top: 1px solid #f3f4f6;
+}
+
+.search-results button {
+  width: 100%;
+  text-align: left;
+  padding: 0.85rem 1.25rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.search-results button:hover {
+  background: #eff6ff;
+}
+
+.search-path {
+  display: block;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.search-empty {
+  padding: 2rem 1.25rem;
+  color: #6b7280;
+  text-align: center;
 }

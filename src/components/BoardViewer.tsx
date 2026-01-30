@@ -102,6 +102,7 @@ export function BoardViewer({
   showEffortBadges = true,
   showLinkIndicators = true,
   initialPageId,
+  navigateToPageId,
   highlight,
   onButtonClick,
   onPageChange,
@@ -195,6 +196,16 @@ export function BoardViewer({
     setCurrentPageId(resolveInitialPageId());
     setPageHistory([]);
   }, [resolveInitialPageId]);
+
+  React.useEffect(() => {
+    if (!navigateToPageId) return;
+    if (!tree.pages[navigateToPageId]) return;
+    setCurrentPageId(navigateToPageId);
+    setPageHistory([]);
+    if (onPageChange) {
+      onPageChange(navigateToPageId);
+    }
+  }, [navigateToPageId, onPageChange, tree.pages]);
 
   React.useEffect(() => {
     if (highlightedButtonRef.current) {
@@ -550,9 +561,10 @@ export function BoardViewer({
                   const isHighlighted =
                     highlight &&
                     highlight.pageId === currentPageId &&
-                    ((highlight.x !== undefined && highlight.y !== undefined
-                      ? button.x === highlight.x && button.y === highlight.y
-                      : false) ||
+                    (highlight.buttonId === button.id ||
+                      (highlight.x !== undefined && highlight.y !== undefined
+                        ? button.x === highlight.x && button.y === highlight.y
+                        : false) ||
                       (highlight.label && button.label === highlight.label));
 
                   // Determine the image source
