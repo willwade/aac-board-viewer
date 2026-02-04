@@ -42,9 +42,9 @@
       "require": "./dist/board-viewer.js"
     },
     "./vue": {
-      "types": "./dist/vue.d.ts",
-      "import": "./dist/vue.mjs",
-      "require": "./dist/vue.js"
+      "types": "./dist/vue/index.d.ts",
+      "import": "./dist/vue/index.mjs",
+      "require": "./dist/vue/index.js"
     },
     "./styles": "./dist/styles.css"
   },
