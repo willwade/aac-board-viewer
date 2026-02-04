@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/board-viewer.ts', 'src/styles.css'],
+  entry: ['src/index.ts', 'src/board-viewer.ts', 'src/vue/index.ts', 'src/styles.css'],
   format: ['cjs', 'esm'],
   loader: {
     '.css': 'copy',
@@ -10,10 +10,11 @@ export default defineConfig({
     entry: {
       index: 'src/index.ts',
       'board-viewer': 'src/board-viewer.ts',
+      vue: 'src/vue/index.ts',
     },
   },
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['react', 'react-dom', '@willwade/aac-processors'],
+  external: ['react', 'react-dom', 'vue', '@willwade/aac-processors'],
 });

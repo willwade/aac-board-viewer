@@ -26,6 +26,11 @@ Note: In-browser loading of SQLite-backed formats (`.sps`, `.spb`, `.ce`) requir
 - 🔧 **Customizable** - Flexible styling and behavior options (toggle message bar, link indicators, effort badges)
 - 🌙 **Dark-mode Friendly** - Inherits host app theme when a parent adds the `dark` class
 
+## Demos
+
+- React demo: `demo/`
+- Vue demo: `demo-vue/`
+
 ## Installation
 
 Requires Node 20+.
@@ -69,6 +74,39 @@ function MyViewer({ file }: { file: File }) {
   if (!tree) return <div>Loading...</div>;
   return <BoardViewer tree={tree} />;
 }
+```
+
+### Vue 3 Usage
+
+```ts
+import { BoardViewer } from 'aac-board-viewer/vue';
+import { loadAACFile, configureBrowserSqlJs } from 'aac-board-viewer';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
+import 'aac-board-viewer/styles';
+
+configureBrowserSqlJs({
+  locateFile: () => sqlWasmUrl,
+});
+```
+
+```vue
+<template>
+  <BoardViewer v-if="tree" :tree="tree" />
+  <div v-else>Loading...</div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import type { AACTree } from 'aac-board-viewer';
+import { BoardViewer } from 'aac-board-viewer/vue';
+import { loadAACFile } from 'aac-board-viewer';
+
+const tree = ref<AACTree | null>(null);
+
+async function loadFile(file: File) {
+  tree.value = await loadAACFile(file);
+}
+</script>
 ```
 
 ### Server-Side / API Usage
@@ -126,6 +164,12 @@ function RemoteBoard({ id }: { id: string }) {
   return <BoardViewer tree={tree} />;
 }
 ```
+
+## Publishing Notes
+
+- The Vue renderer is exported from `aac-board-viewer/vue` and built by `tsup` into `dist/vue.*`.
+- `vue` is an optional peer dependency so React-only consumers avoid install warnings, but Vue apps should add `vue` explicitly.
+- Publish requires `npm run build` to generate `dist` artifacts (including `dist/vue.*` and `dist/styles.css`).
 
 ### With Metrics
 

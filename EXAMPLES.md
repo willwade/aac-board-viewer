@@ -11,6 +11,7 @@ This document provides practical examples for using the AAC Board Viewer compone
 - [Custom Styling](#custom-styling)
 - [Event Handling](#event-handling)
 - [Multiple Boards](#multiple-boards)
+- [Vue 3](#vue-3)
 
 ## Basic Usage
 
@@ -207,6 +208,32 @@ export default function ViewerPage({ tree }) {
 .my-custom-viewer button {
   transition: transform 0.2s ease;
 }
+```
+
+## Vue 3
+
+Basic Vue usage with a pre-loaded tree:
+
+```vue
+<template>
+  <BoardViewer :tree="tree" />
+  <div v-if="!tree">Loading...</div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import type { AACTree } from 'aac-board-viewer';
+import { BoardViewer } from 'aac-board-viewer/vue';
+
+const tree = ref<AACTree | null>(null);
+
+async function loadFromApi() {
+  const response = await fetch('/api/boards/1');
+  tree.value = await response.json();
+}
+
+loadFromApi();
+</script>
 ```
 
 ## Event Handling
