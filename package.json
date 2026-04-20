@@ -71,7 +71,7 @@
     }
   },
   "dependencies": {
-    "@willwade/aac-processors": "^0.1.19"
+    "@willwade/aac-processors": "^0.2.4"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

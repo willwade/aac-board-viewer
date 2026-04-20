@@ -17,9 +17,10 @@ interface PredictionsTooltipProps {
   buttonMetricsLookup: { [buttonId: string]: ButtonMetric };
   onClose: () => void;
   onWordClick?: (word: string, effort: number) => void;
+  pos?: string;
 }
 
-function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup, onClose, onWordClick }: PredictionsTooltipProps) {
+function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup, onClose, onWordClick, pos }: PredictionsTooltipProps) {
   // Close tooltip when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -43,6 +44,17 @@ function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup,
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
           Word forms for &quot;{label}&quot;
+          {pos && pos !== 'Unknown' && pos !== 'Ignore' && (
+            <span className={`ml-1.5 px-1.5 py-0 text-[10px] font-semibold rounded text-white ${
+              pos === 'Verb' ? 'bg-orange-500' :
+              pos === 'Noun' ? 'bg-teal-500' :
+              pos === 'Pronoun' ? 'bg-pink-500' :
+              pos === 'Adjective' ? 'bg-yellow-500' :
+              'bg-gray-500'
+            }`}>
+              {pos}
+            </span>
+          )}
         </h4>
         <button
           onClick={onClose}
@@ -166,6 +178,7 @@ export function BoardViewer({
     position: { x: number; y: number };
     buttonMetricsLookup: { [buttonId: string]: ButtonMetric };
     onWordClick?: (word: string, effort: number) => void;
+    pos?: string;
   } | null>(null);
 
   // Convert button metrics array to lookup object for easy access
@@ -325,12 +338,14 @@ export function BoardViewer({
   ) => {
     event.stopPropagation(); // Prevent button click
     const predictions = button.predictions || (button.parameters as { predictions?: string[] })?.predictions;
+    const buttonMetric = buttonMetricsLookup[button.id];
     if (predictions && predictions.length > 0) {
       setPredictionsTooltip({
         predictions,
         label: button.label,
         position: { x: event.clientX, y: event.clientY },
         buttonMetricsLookup,
+        pos: buttonMetric?.pos || button.pos,
         onWordClick: (word, effort) => {
           const trimmed = word || '';
           if (trimmed) {
@@ -678,6 +693,22 @@ export function BoardViewer({
                         <div className="absolute top-1 left-1 w-2 h-2 bg-green-500 rounded-full shadow-sm" />
                       )}
 
+                      {/* POS Badge */}
+                      {buttonMetric?.pos && buttonMetric.pos !== 'Unknown' && buttonMetric.pos !== 'Ignore' && (
+                        <div
+                          className={`absolute top-1 left-1 ${hasLink && showLinkIndicators ? 'left-4' : 'left-1'} px-1 py-0 text-[8px] font-semibold rounded shadow-sm text-white ${
+                            buttonMetric.pos === 'Verb' ? 'bg-orange-500' :
+                            buttonMetric.pos === 'Noun' ? 'bg-teal-500' :
+                            buttonMetric.pos === 'Pronoun' ? 'bg-pink-500' :
+                            buttonMetric.pos === 'Adjective' ? 'bg-yellow-500' :
+                            'bg-gray-500'
+                          }`}
+                          title={`Part of speech: ${buttonMetric.pos}`}
+                        >
+                          {buttonMetric.pos.charAt(0)}
+                        </div>
+                      )}
+
                       {/* Predictions Indicator */}
                       {hasPredictions && (
                         <div
@@ -755,6 +786,7 @@ export function BoardViewer({
           position={predictionsTooltip.position}
           buttonMetricsLookup={predictionsTooltip.buttonMetricsLookup}
           onWordClick={predictionsTooltip.onWordClick}
+          pos={predictionsTooltip.pos}
           onClose={() => setPredictionsTooltip(null)}
         />
       )}

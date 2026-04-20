@@ -9,7 +9,7 @@
  */
 
 import type { AACTree } from '@willwade/aac-processors';
-import type { LoadAACFileResult } from '../types';
+import type { LoadAACFileResult, MetricsOptions } from '../types';
 
 type ProcessorOptions = Record<string, unknown> | undefined;
 type ProcessorInput = string | ArrayBuffer | Uint8Array;
@@ -368,14 +368,7 @@ function getFilenameFromURL(url: string): string {
  */
 export async function calculateMetrics(
   tree: AACTree,
-  options: {
-    accessMethod?: 'direct' | 'scanning';
-    scanningConfig?: {
-      pattern?: 'linear' | 'row-column' | 'block';
-      selectionMethod?: string;
-      errorCorrection?: boolean;
-    };
-  } = {}
+  options: MetricsOptions = {}
 ) {
   // Import MetricsCalculator dynamically to avoid circular dependencies
   const aacProcessors = await importProcessors();
@@ -433,6 +426,8 @@ export async function calculateMetrics(
         errorCorrectionEnabled: options.scanningConfig.errorCorrection || false,
         errorRate: 0.1,
       },
+      useSmartGrammar: options.useSmartGrammar,
+      morphologyLocale: options.morphologyLocale,
     };
   }
 
@@ -447,6 +442,10 @@ export async function calculateMetrics(
     level?: number;
     semantic_id?: string;
     clone_id?: string;
+    pos?: string;
+    is_word_form?: boolean;
+    parent_button_id?: string;
+    parent_button_label?: string;
   };
 
   return metricsResult.buttons.map((btn: MetricsButton) => ({
@@ -458,6 +457,10 @@ export async function calculateMetrics(
     level: btn.level,
     semantic_id: btn.semantic_id,
     clone_id: btn.clone_id,
+    pos: btn.pos,
+    is_word_form: btn.is_word_form,
+    parent_button_id: btn.parent_button_id,
+    parent_button_label: btn.parent_button_label,
   }));
 }
 

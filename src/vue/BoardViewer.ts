@@ -21,6 +21,7 @@ interface PredictionsTooltipProps {
   buttonMetricsLookup: { [buttonId: string]: ButtonMetric };
   onClose: () => void;
   onWordClick?: (word: string, effort: number) => void;
+  pos?: string;
 }
 
 const PredictionsTooltip = defineComponent({
@@ -41,6 +42,7 @@ const PredictionsTooltip = defineComponent({
       type: Function as PropType<(word: string, effort: number) => void>,
       required: false,
     },
+    pos: { type: String, default: undefined },
   },
   setup(props: Readonly<PredictionsTooltipProps>) {
     const handleClickOutside = (e: MouseEvent) => {
@@ -81,8 +83,25 @@ const PredictionsTooltip = defineComponent({
           h('div', { class: 'flex items-center justify-between mb-2' }, [
             h(
               'h4',
-              { class: 'text-sm font-semibold text-gray-900 dark:text-white' },
-              `Word forms for "${props.label}"`
+              { class: 'text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5' },
+              [
+                `Word forms for "${props.label}"`,
+                props.pos && props.pos !== 'Unknown' && props.pos !== 'Ignore'
+                  ? h(
+                      'span',
+                      {
+                        class: `px-1.5 py-0 text-[10px] font-semibold rounded text-white ${
+                          props.pos === 'Verb' ? 'bg-orange-500' :
+                          props.pos === 'Noun' ? 'bg-teal-500' :
+                          props.pos === 'Pronoun' ? 'bg-pink-500' :
+                          props.pos === 'Adjective' ? 'bg-yellow-500' :
+                          'bg-gray-500'
+                        }`,
+                      },
+                      props.pos
+                    )
+                  : null,
+              ]
             ),
             h(
               'button',
@@ -383,12 +402,14 @@ export const BoardViewer = defineComponent({
       event.stopPropagation();
       const predictions =
         button.predictions || (button.parameters as { predictions?: string[] })?.predictions;
+      const buttonMetric = buttonMetricsLookup.value[button.id];
       if (predictions && predictions.length > 0) {
         predictionsTooltip.value = {
           predictions,
           label: button.label,
           position: { x: event.clientX, y: event.clientY },
           buttonMetricsLookup: buttonMetricsLookup.value,
+          pos: buttonMetric?.pos || button.pos,
           onWordClick: (word: string, effort: number) => {
             const trimmed = word || '';
             if (trimmed) {
@@ -655,6 +676,18 @@ export const BoardViewer = defineComponent({
                         'absolute top-1 left-1 w-2 h-2 bg-green-500 rounded-full shadow-sm',
                     })
                   : null,
+                buttonMetric?.pos && buttonMetric.pos !== 'Unknown' && buttonMetric.pos !== 'Ignore'
+                  ? h('div', {
+                      class: `absolute top-1 ${hasLink && props.showLinkIndicators ? 'left-4' : 'left-1'} px-1 py-0 text-[8px] font-semibold rounded shadow-sm text-white ${
+                        buttonMetric.pos === 'Verb' ? 'bg-orange-500' :
+                        buttonMetric.pos === 'Noun' ? 'bg-teal-500' :
+                        buttonMetric.pos === 'Pronoun' ? 'bg-pink-500' :
+                        buttonMetric.pos === 'Adjective' ? 'bg-yellow-500' :
+                        'bg-gray-500'
+                      }`,
+                      title: `Part of speech: ${buttonMetric.pos}`,
+                    }, buttonMetric.pos.charAt(0))
+                  : null,
                 hasPredictions
                   ? h(
                       'div',
@@ -920,6 +953,7 @@ export const BoardViewer = defineComponent({
               buttonMetricsLookup: predictionsTooltip.value.buttonMetricsLookup,
               onClose: predictionsTooltip.value.onClose,
               onWordClick: predictionsTooltip.value.onWordClick,
+              pos: predictionsTooltip.value.pos,
             })
           : null,
       ]);

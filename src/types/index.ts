@@ -18,18 +18,18 @@ import type {
  * Button metric information for effort scoring
  */
 export interface ButtonMetric {
-  /** Button ID */
   id: string;
-  /** Button label text */
   label: string;
-  /** Cognitive effort score (lower is easier) */
   effort: number;
-  /** Usage count */
   count?: number;
-  /** Whether the button represents a word */
   is_word?: boolean;
-  /** Depth level in navigation tree */
   level?: number;
+  pos?: string;
+  is_word_form?: boolean;
+  parent_button_id?: string;
+  parent_button_label?: string;
+  semantic_id?: string;
+  clone_id?: string;
 }
 
 /**
@@ -86,15 +86,12 @@ export interface LoadAACFileResult {
 export type { AACTree, AACPage, AACButton, AACSemanticAction, AACSemanticCategory, AACSemanticIntent };
 
 export interface MetricsOptions {
-  /** Access method: 'direct' or 'scanning' */
   accessMethod?: 'direct' | 'scanning';
-  /** Scanning configuration */
   scanningConfig?: {
-    /** Scanning pattern: 'linear', 'row-column', or 'block' */
     pattern?: 'linear' | 'row-column' | 'block';
-    /** Selection method for scanning */
     selectionMethod?: string;
-    /** Enable error correction */
     errorCorrection?: boolean;
   };
+  useSmartGrammar?: boolean;
+  morphologyLocale?: string;
 }
