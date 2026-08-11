@@ -10,6 +10,7 @@ Universal AAC (Augmentative and Alternative Communication) board viewer componen
 - **OpenBoard** (`.obf`, `.obz` files)
 - **Asterics Grid** (`.grd` files)
 - **Apple Panels** (`.plist` files)
+- **GoTalk NOW** (`.gtbz` files)
 - **OPML** (`.opml` files)
 - **Excel** (`.xlsx` boards)
 - **DOT files** (`.dot` visualizations)
@@ -371,6 +372,17 @@ See the `/demo` directory for complete examples:
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+## Changelog
+
+### v0.3.0
+
+- Bumped [`@willwade/aac-processors`](https://github.com/willwade/AACProcessors-nodejs) to `^0.3.1`.
+- **GoTalk NOW support** — `.gtbz` archives (Attainment Company) are now detected and rendered via the underlying processors library.
+- **GridSet improvements** — web browser and computer control commands are now preserved for Grid 3 `.gridset` files; gridset cell coordinates and the gridset validator (now checks the real Grid 3 archive structure) were fixed.
+- **OBF/OBZ fixes** — the OBZ manifest `root` is now written as the board file path (e.g. `"1.obf"`) instead of the board ID, and `load_board` paths were corrected, so exported archives validate and open in external OBF viewers.
+- **Mutation API** — `AACPage` mutation support added (OBF/Gridset), with assets preserved when saving modified trees.
+- **Morphology** — morphology support added for TD Snap and fixed for Grid 3 metrics.
 
 ## License
 
