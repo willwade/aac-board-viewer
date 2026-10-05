@@ -113,6 +113,7 @@ export function BoardViewer({
   showMessageBar = true,
   showEffortBadges = true,
   showLinkIndicators = true,
+  showPredictionIndicators = true,
   initialPageId,
   navigateToPageId,
   highlight,
@@ -722,7 +723,7 @@ export function BoardViewer({
                       )}
 
                       {/* Predictions Indicator */}
-                      {hasPredictions && (
+                      {hasPredictions && showPredictionIndicators && (
                         <div
                           onClick={(e) => handleShowPredictions(button, e)}
                           className="absolute bottom-1 right-1 px-1.5 py-0.5 text-xs font-semibold rounded bg-purple-600 text-white shadow-sm cursor-pointer hover:bg-purple-700 transition"

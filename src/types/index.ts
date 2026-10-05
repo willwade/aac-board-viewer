@@ -46,6 +46,8 @@ export interface BoardViewerProps {
  showEffortBadges?: boolean;
   /** Show indicators for buttons that link to other pages (default: true) */
   showLinkIndicators?: boolean;
+  /** Show word-prediction count badges on buttons (default: true) */
+  showPredictionIndicators?: boolean;
   /** Start the viewer on this page id (overrides tree.rootId) */
   initialPageId?: string;
   /** Navigate to this page id when provided (optional, keeps internal navigation) */
