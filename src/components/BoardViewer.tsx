@@ -481,6 +481,10 @@ export function BoardViewer({
                           backgroundColor: button.style?.backgroundColor || '#f3f4f6',
                           borderColor: button.style?.borderColor || '#e5e7eb',
                           color: button.style?.fontColor || getTextColor(button.style?.backgroundColor),
+                          fontFamily: button.style?.fontFamily || undefined,
+                          fontSize: button.style?.fontSize
+                            ? `${Math.min(48, Math.max(8, button.style.fontSize))}px`
+                            : undefined,
                         }}
                         title={`${button.label}\n${button.message || ''}`}
                       >
@@ -490,7 +494,7 @@ export function BoardViewer({
                           </div>
                         )}
                         <span
-                          className="text-[8px] sm:text-[9px] text-center font-medium leading-tight line-clamp-2"
+                          className={`${button.style?.fontSize ? '' : 'text-[8px] sm:text-[9px] '}text-center font-medium leading-tight line-clamp-2`}
                         >
                           {button.label}
                         </span>
@@ -677,6 +681,10 @@ export function BoardViewer({
                         backgroundColor: button.style?.backgroundColor || '#f3f4f6',
                         borderColor: button.style?.borderColor || '#e5e7eb',
                         color: button.style?.fontColor || getTextColor(button.style?.backgroundColor),
+                        fontFamily: button.style?.fontFamily || undefined,
+                        fontSize: button.style?.fontSize
+                          ? `${Math.min(48, Math.max(8, button.style.fontSize))}px`
+                          : undefined,
                         gridColumn: `${colIndex + 1} / span ${colSpan}`,
                         gridRow: `${rowIndex + 1} / span ${rowSpan}`,
                       }}
@@ -736,7 +744,13 @@ export function BoardViewer({
                       {/* Label / Predictions */}
                       <div className="flex flex-col items-center justify-center">
                         <span
-                          className="text-xs sm:text-sm text-center font-medium leading-tight line-clamp-3"
+                          className={`${button.style?.fontSize ? '' : 'text-xs sm:text-sm '}text-center font-medium leading-tight line-clamp-3`}
+                          style={{
+                            fontSize: button.style?.fontSize
+                              ? `${Math.min(48, Math.max(8, button.style.fontSize))}px`
+                              : undefined,
+                            fontFamily: button.style?.fontFamily || undefined,
+                          }}
                         >
                           {button.label}
                         </span>
