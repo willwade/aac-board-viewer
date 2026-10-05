@@ -481,7 +481,9 @@ export function BoardViewer({
                           backgroundColor: button.style?.backgroundColor || '#f3f4f6',
                           borderColor: button.style?.borderColor || '#e5e7eb',
                           color: button.style?.fontColor || getTextColor(button.style?.backgroundColor),
-                          fontFamily: button.style?.fontFamily || undefined,
+                          fontFamily: button.style?.fontFamily
+                            ? `"${button.style.fontFamily.replace(/["\\]/g, '')}", Arial, sans-serif`
+                            : undefined,
                           fontSize: button.style?.fontSize
                             ? `${Math.min(48, Math.max(8, button.style.fontSize))}px`
                             : undefined,
@@ -681,7 +683,9 @@ export function BoardViewer({
                         backgroundColor: button.style?.backgroundColor || '#f3f4f6',
                         borderColor: button.style?.borderColor || '#e5e7eb',
                         color: button.style?.fontColor || getTextColor(button.style?.backgroundColor),
-                        fontFamily: button.style?.fontFamily || undefined,
+                        fontFamily: button.style?.fontFamily
+                          ? `"${button.style.fontFamily.replace(/["\\]/g, '')}", Arial, sans-serif`
+                          : undefined,
                         fontSize: button.style?.fontSize
                           ? `${Math.min(48, Math.max(8, button.style.fontSize))}px`
                           : undefined,
@@ -749,7 +753,9 @@ export function BoardViewer({
                             fontSize: button.style?.fontSize
                               ? `${Math.min(48, Math.max(8, button.style.fontSize))}px`
                               : undefined,
-                            fontFamily: button.style?.fontFamily || undefined,
+                            fontFamily: button.style?.fontFamily
+                              ? `"${button.style.fontFamily.replace(/["\\]/g, '')}", Arial, sans-serif`
+                              : undefined,
                           }}
                         >
                           {button.label}
