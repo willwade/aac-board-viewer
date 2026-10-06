@@ -99,6 +99,49 @@ function PredictionsTooltip({ predictions, label, position, buttonMetricsLookup,
   );
 }
 
+function SymbolPlaceholder() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="max-h-12 w-9 opacity-25 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </svg>
+  );
+}
+
+function ButtonImage({
+  src,
+  alt,
+  showPlaceholder,
+}: {
+  src?: string | null;
+  alt: string;
+  showPlaceholder?: boolean;
+}) {
+  const [failed, setFailed] = React.useState(false);
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-12 object-contain"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  if (failed || showPlaceholder) {
+    return <SymbolPlaceholder />;
+  }
+  return null;
+}
+
 /**
  * AAC Board Viewer Component
  *
@@ -733,18 +776,18 @@ export function BoardViewer({
                         </div>
                       )}
 
-                      {/* Image */}
-                      {(imageSrc || apiUrl) && (
-                        <img
-                          src={imageSrc || apiUrl}
-                          alt={button.label}
-                          className="max-h-12 object-contain"
-                          onError={(e) => {
-                            console.warn('Image failed to load:', button.label, 'src:', (e.target as HTMLImageElement).src);
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      )}
+                      {/* Image / Symbol placeholder */}
+                      <ButtonImage
+                        src={imageSrc || apiUrl}
+                        alt={button.label}
+                        showPlaceholder={
+                          !imageSrc &&
+                          !apiUrl &&
+                          !!buttonImage &&
+                          typeof buttonImage === 'string' &&
+                          buttonImage.length > 0
+                        }
+                      />
 
                       {/* Label / Predictions */}
                       <div className="flex flex-col items-center justify-center">
