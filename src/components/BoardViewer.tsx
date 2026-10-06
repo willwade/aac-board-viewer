@@ -103,7 +103,7 @@ function SymbolPlaceholder() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="max-h-12 w-9 opacity-25 shrink-0"
+      style={{ maxHeight: 48, width: 36, opacity: 0.25, flexShrink: 0 }}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
@@ -131,7 +131,7 @@ function ButtonImage({
       <img
         src={src}
         alt={alt}
-        className="max-h-12 object-contain"
+        style={{ maxHeight: 48, objectFit: 'contain' }}
         onError={() => setFailed(true)}
       />
     );
