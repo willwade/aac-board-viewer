@@ -56,5 +56,17 @@ jobs:
       - name: Build library
         run: npm run build
 
+      - name: Check whether version is already published
+        id: published
+        run: |
+          VERSION="${{ steps.release_version.outputs.version }}"
+          if npm view "aac-board-viewer@${VERSION}" version > /dev/null 2>&1; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "aac-board-viewer@${VERSION} is already on npm — skipping publish"
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish to npm
+        if: steps.published.outputs.already != 'true'
         run: npm publish --access public
