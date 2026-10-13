@@ -431,7 +431,7 @@ export async function calculateMetrics(
     };
   }
 
-  const metricsResult = calculator.analyze(tree, metricsOptions);
+  const metricsResult = await calculator.analyze(tree, metricsOptions);
 
   // Convert to the format expected by BoardViewer
   type MetricsButton = {
