@@ -42,6 +42,12 @@ export interface BoardViewerProps {
   buttonMetrics?: ButtonMetric[] | null;
   /** Show the message bar at the top (default: true) */
   showMessageBar?: boolean;
+  /** Show board info text: page name, grid dimensions, page count (default: true).
+   *  Navigation controls are unaffected. */
+  showBoardInfo?: boolean;
+  /** Derive the board background from the page style or the majority button
+   *  surround colour, mirroring Grid 3's BackColour surround (default: true) */
+  derivePageBackground?: boolean;
   /** Show effort badges on buttons (default: true if metrics provided) */
  showEffortBadges?: boolean;
   /** Show indicators for buttons that link to other pages (default: true) */
